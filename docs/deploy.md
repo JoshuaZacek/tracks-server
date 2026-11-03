@@ -1,100 +1,135 @@
 # Deploying tracks-server
 
-Everything runs on one Linux server with Docker, using `docker-compose.yml`:
+**The production setup:** the Hetzner VPS's own nginx and Postgres, behind Cloudflare's proxy, deployed by GitHub
+Actions with all configuration in GitHub secrets.
 
-| Service | What it does |
+```
+visitor ──HTTPS──▶ Cloudflare ──HTTPS + client cert──▶ nginx (host) ──▶ 127.0.0.1:3000 api ─┐
+                                                                                             ├─ Postgres (host, Unix socket)
+                                                      worker (Darwin, timetable, push) ──────┤
+                                                      backup (daily pg_dump) ────────────────┘
+```
+
+| Container | What it does |
 |---|---|
-| `caddy` | HTTPS on ports 80/443, forwarding to the API. The certificate is Let's Encrypt's (automatic) or, behind Cloudflare, a Cloudflare Origin Certificate. |
-| `api` | The Express API (not reachable directly, only through Caddy) |
+| `api` | The Express API, published on `127.0.0.1:${API_PORT}` (3000) only, for nginx |
 | `worker` | Timetable and station refresh, the Darwin consumer, the journey updater and push (a dry run without an APNs key) |
-| `postgres` | The database: about 1 GB, mostly the timetable |
 | `migrate` | Runs database migrations before the API and worker start, then exits |
-| `backup` | A daily dump of devices and journeys into `./backups` |
+| `backup` | A daily dump of devices and journeys into `~/tracks-server/backups` |
 
-**Size:** memory use measured in Docker was about 300 MB, and the daily timetable import adds about 175 MB for 20 s. A server
-with 2 GB of RAM is plenty, and 4 GB leaves room. Disk use is about 2 GB plus images and logs (logs rotate at 50 MB per
-service).
+**Size:** measured in Docker, about 200 MB of memory for the containers, plus about 175 MB for 20 s during the daily
+timetable import. The `tracks` database is about 1 GB, mostly the timetable.
+
+**For hosts without nginx or Postgres:** `docker-compose.caddy.yml` adds a Caddy container for HTTPS
+(`REVERSE_PROXY=caddy`), and `docker-compose.postgres.yml` adds a Postgres container (use `POSTGRES_PASSWORD` instead of
+`DB_USER`/`DB_PASSWORD`). Both are covered at the end.
 
 ## 1. Server, once
 
-On the server, as a user who can use `sudo`:
+On the VPS, as a user with `sudo`:
 
 ```sh
-curl -fsSL https://get.docker.com | sudo sh   # Docker Engine + Compose plugin
-sudo usermod -aG docker "$USER"                # then log out and back in
+curl -fsSL https://get.docker.com | sudo sh          # Docker Engine + Compose plugin (skip if installed)
+sudo apt-get install -y rsync
+sudo adduser --disabled-password --gecos "" deploy   # the user GitHub Actions deploys as
+sudo usermod -aG docker deploy                       # membership of "docker" is effectively root: deploys only
 ```
 
-- **Firewall:** only 22 (SSH), 80 and 443 need to be open. With a Hetzner Cloud Firewall, allow TCP 22, 80, 443 and
-  UDP 443 (HTTP/3).
-  - Docker publishes ports past `ufw`, but only Caddy publishes any here. Postgres and the API stay on Docker's
-    internal network.
-- **Ports 80 and 443 must be free.** If the server already runs a web server (nginx, another Caddy), either stop it or
-  put this API behind that server: remove the `caddy` service, publish `api` on `127.0.0.1:3000`, and proxy
-  `DOMAIN` to it. Keep `TRUST_PROXY=1`.
+**Firewall:** nothing new to open. nginx already serves 80/443, and the API only listens on 127.0.0.1.
 
-## 2. DNS and certificates
+## 2. Postgres: a `tracks` database
 
-Add an **A record** for the API's name (`tracks-api`) pointing at the server's IPv4 address. Then choose one of the two
-modes below.
+Tracks uses its own database in the host's Postgres, connecting through the **Unix socket**. Postgres doesn't need to
+listen on any new address, and nothing depends on Docker's network addresses.
 
-### Direct (DNS only): `CADDYFILE=Caddyfile`, the default
+1. **The database**, owned by the user tracks connects as (your existing user):
+   ```sh
+   sudo -u postgres createdb --owner=<your-db-user> tracks
+   ```
+2. **Password login on the socket for that user.** Debian and Ubuntu default to `peer`, which checks the OS user name,
+   so add one line to `pg_hba.conf` (`sudo -u postgres psql -Atc 'SHOW hba_file'` shows where it is). Put it **above**
+   the existing `local all all peer` line, because the first match wins:
+   ```
+   local   tracks   <your-db-user>   scram-sha-256
+   ```
+   Then `sudo systemctl reload postgresql`.
+   - If login then fails with "password authentication failed" although the password is right, the password is stored
+     as MD5. Use `md5` instead of `scram-sha-256` in that line, which accepts both.
+3. Check, as any OS user:
+   `psql "postgres://<your-db-user>@localhost/tracks?host=/var/run/postgresql" -c 'select 1'`, which asks for the
+   password.
 
-The record is **DNS only** (grey cloud in Cloudflare). Clients connect straight to the server, and Caddy gets a Let's
-Encrypt certificate by itself once the name resolves to the server. Ports 80 and 443 must be open to everyone.
+Tracks creates its tables on first deploy (`migrate`), and each timetable import swaps a schema inside this database.
+Postgres 13 or newer is fine; the backup container's `pg_dump` 18 handles any version.
 
-### Cloudflare: `CADDYFILE=Caddyfile.cloudflare`
+## 3. nginx and certificates (behind Cloudflare)
 
-The record is **Proxied** (orange cloud): clients connect to Cloudflare, and Cloudflare connects to the server. Set up in
-the Cloudflare dashboard for `joshuazacek.com`, in this order:
+The DNS record `tracks-api` is **Proxied** (orange cloud): visitors connect to Cloudflare, and Cloudflare connects to
+nginx.
 
-1. **SSL/TLS → Origin Server → Create Certificate.** Use the defaults ("Generate private key and CSR with Cloudflare",
-   15 years) with the hostname `tracks-api.joshuazacek.com`. Copy the two texts it shows into repository secrets:
-   - "Origin Certificate" → `CF_ORIGIN_CERT`
-   - "Private Key" → `CF_ORIGIN_KEY`
-   - The private key is shown only once. Each deploy writes both to `secrets/cloudflare/` on the server.
-2. **SSL/TLS → Overview: encryption mode "Full (strict)".** "Flexible" would talk plain HTTP to the server, which
-   redirects to HTTPS, in a loop.
-3. **SSL/TLS → Origin Server → Authenticated Origin Pulls: On.** Cloudflare then presents its client certificate to the
-   server. Caddy only accepts connections with that certificate (`deploy/cloudflare-origin-pull-ca.pem`, Cloudflare's
-   public CA, valid until 2029), so nobody can reach the server around Cloudflare.
-   - Turn this on **before** deploying: with it off, Cloudflare's requests are refused (error 525/526).
-4. `CADDYFILE` is `Caddyfile.cloudflare` by default in the deploy workflow; set a repository variable `CADDYFILE=Caddyfile`
-   to switch to direct mode.
+1. **A certificate for `tracks-api.joshuazacek.com`.** If your existing certbot certificate is a wildcard
+   (`*.joshuazacek.com`), use it as it is. Otherwise get one for the name. Cloudflare's "Full (strict)" mode accepts any
+   publicly trusted certificate:
+   ```sh
+   sudo certbot certonly --webroot -w /var/www/html -d tracks-api.joshuazacek.com
+   ```
+   - If that fails because Cloudflare can't yet reach a valid certificate on the server (error 526), issue it once with
+     the record set to **DNS only** (grey cloud) or SSL mode **Full**, then switch back.
+   - Renewals then work through Cloudflare: the nginx config serves certbot's challenge on both 80 and 443.
+2. **The nginx site** (`deploy/nginx/tracks-api.conf` in this repository). It takes the certificate paths, enforces
+   Cloudflare's client certificate, and passes the visitor's address to the API:
+   ```sh
+   cd /home/deploy/tracks-server        # after the first deploy; or copy the two files from the repository
+   sudo cp deploy/nginx/tracks-api.conf /etc/nginx/sites-available/
+   sudo cp deploy/cloudflare-origin-pull-ca.pem /etc/nginx/
+   sudo nano /etc/nginx/sites-available/tracks-api.conf    # certificate paths if not /etc/letsencrypt/live/tracks-api.joshuazacek.com/
+   sudo ln -s /etc/nginx/sites-available/tracks-api.conf /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+   - On nginx older than 1.25.1, `nginx -t` rejects `http2 on;`. Follow the comment on that line.
+3. **In Cloudflare** (joshuazacek.com → SSL/TLS):
+   - **Overview: encryption mode "Full (strict)".** "Flexible" would talk plain HTTP to nginx, which redirects to HTTPS,
+     in a loop.
+   - **Origin Server → Authenticated Origin Pulls: On.** Cloudflare then presents its client certificate to nginx.
+     nginx only accepts requests with it (`cloudflare-origin-pull-ca.pem`, Cloudflare's public CA, valid until 2029),
+     so nobody can reach the API around Cloudflare. This setting covers the whole zone. Your other sites behind
+     Cloudflare are unaffected unless their own nginx config asks for the certificate.
 
-**What this gives you:**
-- **Visitors' addresses:** Caddy passes the visitor's address from Cloudflare's `CF-Connecting-IP` header to the API.
-  That's safe only because nothing but Cloudflare can connect, and it means rate limits apply per visitor, not per
-  Cloudflare server.
-- **Firewall:** only 443 needs to be open, though 80 does no harm (Caddy just redirects).
-- **HTTP/3:** visitors get HTTP/3 from Cloudflare.
+**Why this matters for rate limits:** only Cloudflare can connect, so its `CF-Connecting-IP` header is the visitor's real
+address. nginx passes it as the only `X-Forwarded-For` entry, and the API's per-visitor rate limits use it. Without the
+client-certificate check, anyone could send a fake `CF-Connecting-IP` straight to the server.
 
-## 3. Configuration (GitHub secrets)
+## 4. Configuration (GitHub secrets)
 
-The server's configuration lives only in GitHub, under Settings → Secrets and variables → Actions:
+All configuration lives in GitHub, under Settings → Secrets and variables → Actions:
 - **Secrets** for anything sensitive.
-- **Variables** (optional) to override the defaults for non-secret settings.
+- **Variables** (optional) to override the defaults below.
 
-Each deploy runs `deploy/write-config.sh`, which writes them to the server as `tracks-server/.env` (mode 600) plus the
-certificate and key files, over SSH. To change a setting, edit the secret and deploy again.
+Each deploy runs `deploy/write-config.sh`, which writes them to the server as `~/tracks-server/.env` (mode 600) over SSH.
+To change a setting, edit it in GitHub and deploy again.
 
 **Secrets:**
 
 | Secret | Value | |
 |---|---|---|
-| `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` | see step 4 | required |
-| `POSTGRES_PASSWORD` | `openssl rand -hex 24`; letters, digits, `._~-` only | required, **never change it after the first deploy** (Postgres keeps the one it started with) |
-| `CF_ORIGIN_CERT`, `CF_ORIGIN_KEY` | the Cloudflare Origin Certificate and its private key (step 2), whole texts including the `-----BEGIN`/`END` lines | required behind Cloudflare |
-| `KB_STATIONS_API_KEY` | from the Mac's `.env` | for station names and coordinates |
-| `DARWIN_KAFKA_BOOTSTRAP`, `DARWIN_KAFKA_GROUP_ID`, `DARWIN_KAFKA_USERNAME`, `DARWIN_KAFKA_PASSWORD` | from the Mac's `.env` | for live data |
+| `DEPLOY_HOST` | the VPS's IP address | required |
+| `DEPLOY_USER` | `deploy` | required |
+| `DEPLOY_SSH_KEY` | the **private** deploy key, the whole file (see step 5) | required |
+| `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan <server-ip>` (pins the server's host key) | required |
+| `DB_USER`, `DB_PASSWORD` | your Postgres user and its password (step 2); any characters are fine | required |
+| `KB_STATIONS_API_KEY` | from the Mac's `.env` | station names and coordinates |
+| `DARWIN_KAFKA_BOOTSTRAP`, `DARWIN_KAFKA_GROUP_ID`, `DARWIN_KAFKA_USERNAME`, `DARWIN_KAFKA_PASSWORD` | from the Mac's `.env` | live data |
 | `NWR_SCHEDULE_URL` + `NWR_SCHEDULE_USERNAME`/`NWR_SCHEDULE_PASSWORD` (or `NWR_SCHEDULE_API_KEY`) | see "Timetable" | optional: daily timetable download |
-| `APNS_KEY_ID`, `APNS_KEY_P8` | the key's ID and the whole `.p8` file | optional: push |
+| `APNS_KEY_ID`, `APNS_KEY_P8` | the key's ID, and the whole `.p8` file | optional: push |
 
-**Variables (defaults):**
+**Variables, with their defaults:**
 
 | Variable | Default |
 |---|---|
 | `DOMAIN` | `tracks-api.joshuazacek.com` |
-| `CADDYFILE` | `Caddyfile.cloudflare` |
+| `REVERSE_PROXY` | `nginx` (the host's) |
+| `API_PORT` | `3000` (change it if something on the VPS already uses 127.0.0.1:3000, and in the nginx site too) |
+| `DB_NAME`, `DB_SOCKET_DIR` | `tracks`, `/var/run/postgresql` |
 | `DARWIN_KAFKA_TOPIC` | `prod-1010-Darwin-Train-Information-Push-Port-IIII2_0-JSON` |
 | `DARWIN_KAFKA_SASL_MECHANISM` | `plain` |
 | `KB_STATIONS_URL` | `https://api1.raildata.org.uk/1010-knowlegebase-stations-xml-feed1_1/4.0/station-{CRS}.xml` |
@@ -102,65 +137,50 @@ certificate and key files, over SSH. To change a setting, edit the secret and de
 | `SCHEDULE_REFRESH_TIME`, `BACKUP_KEEP_DAYS`, `LOG_LEVEL` | `04:00`, `14`, `info` |
 | `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | `TYKCDFU4XA`, `com.joshuazacek.TrainTracker` |
 
-`DATABASE_URL`, `DATA_DIR`, `PORT`, `NODE_ENV` and `TRUST_PROXY` are set by the compose file.
+`NODE_ENV`, `DATA_DIR`, `PORT` and `TRUST_PROXY` are set by the compose file. `DATABASE_URL` is built from `DB_*`, with
+special characters in the password percent-encoded.
 
 > **Only one Darwin consumer per group.** The Darwin consumer group is tied to the RDM subscription. Stop the worker on the
-> Mac before starting the one on the server: two consumers in the same group take turns and share one committed position.
+> Mac before the server's starts: two consumers in the same group take turns and share one committed position.
 
-## 4. Deploy with GitHub Actions
+## 5. Deploying with GitHub Actions
 
-`.github/workflows/ci.yml` runs the checks (typecheck, lint, OpenAPI, the tests against a Postgres container) on every
-push and pull request. On a push to `main` that passes, it writes the configuration (`deploy/write-config.sh`), then deploys
-with `deploy/deploy.sh`: it copies the code over SSH,
-builds the image on the server and restarts the stack (migrations first). A failed build leaves the running version
-alone. The job then waits for `https://tracks-api.joshuazacek.com/health`. You can also start it by hand under
-**Actions → CI → Run workflow**.
+`.github/workflows/ci.yml` runs the checks (typecheck, lint, OpenAPI, and the tests against a Postgres container) on every
+push and pull request. On a push to `main` that passes:
+1. it writes the configuration (`deploy/write-config.sh`)
+2. it copies the code over SSH and builds the image on the server (`deploy/deploy.sh`), so there's no image registry
+3. it restarts the stack, migrations first; a failed build leaves the running version alone
+4. it waits for `https://tracks-api.joshuazacek.com/health`
 
-### One-time setup
+Until `DEPLOY_HOST` is set, the deploy job is skipped. You can also start it under **Actions → CI → Run workflow**.
 
-1. **A deploy user on the server**, allowed to run Docker. Membership of the `docker` group is effectively root, so
-   keep this key for deploys only.
-   ```sh
-   sudo adduser --disabled-password --gecos "" deploy
-   sudo usermod -aG docker deploy
-   sudo apt-get install -y rsync
-   ```
-2. **A key pair just for deploys**, made on the Mac. The private half goes to GitHub, the public half to the server.
-   ```sh
-   ssh-keygen -t ed25519 -N "" -C "tracks GitHub Actions deploy" -f ~/.ssh/tracks_deploy
-   ssh-copy-id -i ~/.ssh/tracks_deploy.pub deploy@<server-ip>   # or append it to ~deploy/.ssh/authorized_keys
-   ```
-3. **The secrets from step 3.**
-4. **The deploy secrets**: in GitHub under Settings → Secrets and variables → Actions, or with the `gh` CLI:
-   ```sh
-   gh secret set DEPLOY_HOST --body "<server-ip>"
-   gh secret set DEPLOY_USER --body "deploy"
-   gh secret set DEPLOY_SSH_KEY < ~/.ssh/tracks_deploy
-   ssh-keyscan <server-ip> | gh secret set DEPLOY_KNOWN_HOSTS
-   ```
-   `DEPLOY_KNOWN_HOSTS` pins the server's host key, so the workflow refuses to talk to anything else at that address.
-5. Optional: under Settings → Environments → `production`, add yourself as a required reviewer to approve each deploy.
+**The deploy key**, made on the Mac. The private half goes to GitHub, the public half to the server:
 
-### By hand
+```sh
+ssh-keygen -t ed25519 -N "" -C "tracks GitHub Actions deploy" -f ~/.ssh/tracks_deploy
+# On the VPS, add the contents of ~/.ssh/tracks_deploy.pub to /home/deploy/.ssh/authorized_keys
+pbcopy < ~/.ssh/tracks_deploy        # paste into the DEPLOY_SSH_KEY secret
+ssh-keyscan <server-ip>              # paste the output into DEPLOY_KNOWN_HOSTS
+```
 
-`deploy/deploy.sh deploy@<server-ip>` also works from the Mac with your own SSH access. It sends only the code, leaving
-the `.env` and `secrets/` from the last CI deploy (and `backups/`) alone. Each restart is graceful: the API drains its
-requests, and the worker commits its Darwin position.
+Optional: under Settings → Environments → `production`, add yourself as a required reviewer to approve each deploy.
 
-## 5. First start
+**By hand:** `deploy/deploy.sh deploy@<server-ip>` sends just the code, using the configuration from the last CI deploy.
+
+## 6. First start
 
 - **Timetable:** the worker imports `/data/CIF_ALL_FULL_DAILY_toc-full.json.gz` at startup and daily at
   `SCHEDULE_REFRESH_TIME` whenever the file is newer than the last import. It downloads the file first if
-  `NWR_SCHEDULE_URL` is set. Until a timetable is imported, `/ready` returns 503 `schedule_not_loaded`. To provide the
-  file by hand:
+  `NWR_SCHEDULE_URL` is set. Until a timetable is imported, `/ready` and the timetable endpoints return 503
+  `schedule_not_loaded`. To provide the file by hand:
   ```sh
-  scp CIF_ALL_FULL_DAILY_toc-full.json.gz user@server:
-  ssh user@server 'cd tracks-server && docker compose cp ~/CIF_ALL_FULL_DAILY_toc-full.json.gz worker:/data/ && docker compose restart worker'
+  scp CIF_ALL_FULL_DAILY_toc-full.json.gz deploy@<server-ip>:
+  ssh deploy@<server-ip> 'cd tracks-server && docker compose cp ~/CIF_ALL_FULL_DAILY_toc-full.json.gz worker:/data/ && docker compose restart worker'
   ```
 - **Stations:** names and coordinates come from Knowledgebase, about 15 minutes the first time, in the background.
 - **Darwin:** on first start the worker reads everything the topic still holds, about an hour of messages in the
   daytime.
-- **Check:** `https://<DOMAIN>/v1/status` should show `"healthy": true`.
+- **Check:** `https://tracks-api.joshuazacek.com/v1/status` should show `"healthy": true`.
 
 ## Timetable
 
@@ -181,23 +201,34 @@ or the Darwin feed has had no messages for 5 minutes.
 A free uptime monitor (for example UptimeRobot or Healthchecks.io) can check that URL every few minutes for the text
 `"healthy":true` and email you otherwise.
 
-Logs: `docker compose logs -f worker` (or `api`, `caddy`, `backup`).
+Logs: `cd ~/tracks-server && docker compose logs -f worker` (or `api`, `backup`).
 
 ## Backups
 
-The `backup` service writes `backups/tracks-YYYY-MM-DD.dump` daily and keeps 14 days (`BACKUP_KEEP_DAYS`). A dump holds
-devices, journeys and Live Activity registrations; with today's data it's under 1 MB.
+The `backup` container writes `~/tracks-server/backups/tracks-YYYY-MM-DD.dump` daily and keeps 14 days
+(`BACKUP_KEEP_DAYS`). A dump holds devices, journeys and Live Activity registrations; with today's data it's under 1 MB.
 - **Left out:** the timetable, Darwin state, the push log and `meta`. The worker rebuilds them by itself.
-- **Off-site:** the dumps sit on the same disk. Copy them off now and then (`scp user@server:tracks-server/backups/* .`),
-  or turn on Hetzner's server backups (a paid add-on).
+- **Off-site:** the dumps sit on the same disk. Copy them off now and then
+  (`scp deploy@<server-ip>:tracks-server/backups/* .`), or turn on Hetzner's server backups (a paid add-on).
 
-Restore into a fresh stack:
+Restore (into the `tracks` database, replacing what's there):
 
 ```sh
-docker compose up -d postgres
-docker compose exec -T postgres pg_restore -U tracks -d tracks --clean --if-exists --no-owner < backups/tracks-YYYY-MM-DD.dump
+cd ~/tracks-server
+docker compose stop api worker
+docker compose run --rm -T --entrypoint sh backup -c \
+  'pg_restore --dbname="$DATABASE_URL" --clean --if-exists --no-owner /backups/tracks-YYYY-MM-DD.dump'
 docker compose up -d   # migrations run; the worker re-imports the timetable and catches up on Darwin
 ```
 
-The same steps move existing data from the Mac to the server. On the Mac, dump the database with the flags in
-`deploy/backup.sh`, copy the file to the server, and restore it as above.
+## Without the host's nginx or Postgres
+
+- **Caddy instead of nginx:** set the variable `REVERSE_PROXY=caddy`. Caddy then serves 80/443 itself.
+  - Direct mode (`CADDYFILE=Caddyfile`, the default): it gets a Let's Encrypt certificate by itself.
+  - Behind Cloudflare (`CADDYFILE=Caddyfile.cloudflare`): it uses a Cloudflare Origin Certificate from the secrets
+    `CF_ORIGIN_CERT` and `CF_ORIGIN_KEY`, with the same client-certificate check as the nginx site.
+- **Bundled Postgres:** leave `DB_USER`/`DB_PASSWORD` unset and set the secret `POSTGRES_PASSWORD`
+  (`openssl rand -hex 24`; never change it after the first deploy).
+- **Locally:** a `.env` with `COMPOSE_FILE=docker-compose.yml:docker-compose.postgres.yml:docker-compose.caddy.yml`,
+  `DOMAIN=localhost`, `POSTGRES_PASSWORD=…` and `DATABASE_URL=postgres://tracks:…@postgres:5432/tracks` runs everything
+  in Docker.

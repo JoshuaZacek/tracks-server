@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 # Writes the server's configuration from environment variables (in CI: repository secrets and
-# variables) and sends it to the server in one SSH connection:
+# variables) and sends it to the server in one SSH connection.
+#
+# Database: with DB_USER/DB_PASSWORD, the host's own Postgres over its Unix socket (database
+# DB_NAME, default tracks; socket directory DB_SOCKET_DIR, default /var/run/postgresql). Without
+# them, the bundled Postgres container (docker-compose.postgres.yml) with POSTGRES_PASSWORD.
+#
+# HTTPS: REVERSE_PROXY=nginx (default) leaves it to the host's web server (deploy/nginx/), with
+# the API on 127.0.0.1:API_PORT; REVERSE_PROXY=caddy adds the bundled Caddy (docker-compose.caddy.yml).
+#
+# Files written:
 #   <remote-dir>/.env                               settings for docker compose (mode 600)
-#   <remote-dir>/secrets/cloudflare/origin.pem      Cloudflare Origin Certificate  (CF_ORIGIN_CERT)
-#   <remote-dir>/secrets/cloudflare/origin-key.pem  its private key                (CF_ORIGIN_KEY)
+#   <remote-dir>/secrets/cloudflare/origin.pem      Cloudflare Origin Certificate, if CF_ORIGIN_CERT is set
+#   <remote-dir>/secrets/cloudflare/origin-key.pem  its private key (CF_ORIGIN_KEY); only bundled Caddy uses these
 #   <remote-dir>/secrets/AuthKey.p8                 APNs key, if APNS_KEY_P8 is set
 #
 #   deploy/write-config.sh user@host [remote-dir]
@@ -15,8 +24,12 @@ HOST="${1:?usage: deploy/write-config.sh user@host [remote-dir]}"
 DIR="${2:-tracks-server}"
 
 missing=()
-for name in DOMAIN POSTGRES_PASSWORD; do [ -n "${!name:-}" ] || missing+=("$name"); done
-if [ "${CADDYFILE:-Caddyfile}" = Caddyfile.cloudflare ]; then
+[ -n "${DOMAIN:-}" ] || missing+=(DOMAIN)
+if [ -z "${DB_USER:-}" ] && [ -z "${POSTGRES_PASSWORD:-}" ]; then missing+=("DB_USER and DB_PASSWORD (or POSTGRES_PASSWORD)"); fi
+if [ -n "${DB_USER:-}" ] && [ -z "${DB_PASSWORD:-}" ]; then missing+=(DB_PASSWORD); fi
+REVERSE_PROXY="${REVERSE_PROXY:-nginx}"
+case "$REVERSE_PROXY" in nginx | caddy) ;; *) echo "::error::REVERSE_PROXY must be nginx or caddy" >&2; exit 1 ;; esac
+if [ "$REVERSE_PROXY" = caddy ] && [ "${CADDYFILE:-Caddyfile}" = Caddyfile.cloudflare ]; then
   for name in CF_ORIGIN_CERT CF_ORIGIN_KEY; do [ -n "${!name:-}" ] || missing+=("$name"); done
 fi
 if [ ${#missing[@]} -gt 0 ]; then
@@ -24,11 +37,19 @@ if [ ${#missing[@]} -gt 0 ]; then
   exit 1
 fi
 
-# It goes inside DATABASE_URL, where characters like # @ / : or spaces would break the URL.
-if ! [[ "$POSTGRES_PASSWORD" =~ ^[A-Za-z0-9._~-]+$ ]]; then
-  echo "::error::POSTGRES_PASSWORD may only contain letters, digits and . _ ~ - (generate one with: openssl rand -hex 24)" >&2
-  exit 1
+uri() { jq -rn --arg v "$1" '$v|@uri'; } # percent-encodes, so any password works in the URL
+DB_NAME="${DB_NAME:-tracks}"
+DB_SOCKET_DIR="${DB_SOCKET_DIR:-/var/run/postgresql}"
+if [ -n "${DB_USER:-}" ]; then
+  DATABASE_URL="postgres://$(uri "$DB_USER"):$(uri "$DB_PASSWORD")@localhost/$(uri "$DB_NAME")?host=/var/run/postgresql" # the host parameter (the socket) overrides "localhost"
+  COMPOSE_FILE=docker-compose.yml
+  POSTGRES_PASSWORD=''
+else
+  DATABASE_URL="postgres://tracks:$(uri "$POSTGRES_PASSWORD")@postgres:5432/tracks"
+  COMPOSE_FILE=docker-compose.yml:docker-compose.postgres.yml
 fi
+[ "$REVERSE_PROXY" = caddy ] && COMPOSE_FILE="$COMPOSE_FILE:docker-compose.caddy.yml"
+API_PORT="${API_PORT:-3000}"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -44,7 +65,7 @@ put() {
   esac
   printf "%s='%s'\n" "$name" "$value" >> "$env_file"
 }
-for name in DOMAIN CADDYFILE POSTGRES_PASSWORD LOG_LEVEL SCHEDULE_REFRESH_TIME BACKUP_KEEP_DAYS \
+for name in COMPOSE_FILE DOMAIN API_PORT CADDYFILE DATABASE_URL DB_SOCKET_DIR POSTGRES_PASSWORD LOG_LEVEL SCHEDULE_REFRESH_TIME BACKUP_KEEP_DAYS \
   RDM_AUTH_HEADER KB_STATIONS_URL KB_STATIONS_API_KEY \
   NWR_SCHEDULE_URL NWR_SCHEDULE_API_KEY NWR_SCHEDULE_USERNAME NWR_SCHEDULE_PASSWORD \
   DARWIN_KAFKA_BOOTSTRAP DARWIN_KAFKA_TOPIC DARWIN_KAFKA_GROUP_ID DARWIN_KAFKA_USERNAME DARWIN_KAFKA_PASSWORD \

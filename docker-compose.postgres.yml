@@ -1,0 +1,29 @@
+# A bundled Postgres, for hosts without one of their own (and for trying the stack locally).
+# Use it with COMPOSE_FILE=docker-compose.yml:docker-compose.postgres.yml in .env, and
+#   DATABASE_URL=postgres://tracks:<POSTGRES_PASSWORD>@postgres:5432/tracks
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: tracks
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: tracks
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tracks -d tracks']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    shm_size: 256mb
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '5' }
+
+  migrate:
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  pgdata:

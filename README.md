@@ -50,10 +50,13 @@ Set `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY_PATH` (the `.p8`, outside the repo)
 
 ### Production
 
-`docker-compose.yml` is the production stack: Postgres, migrations, the API behind Caddy (automatic HTTPS), the worker,
-and daily backups. `deploy/deploy.sh user@host` copies the code to a server and (re)starts it. Setup, the timetable
-download, monitoring and restore are in **`docs/deploy.md`**. Try the stack locally with `DOMAIN=localhost` and
-`POSTGRES_PASSWORD=…` in `.env`.
+Deployed by GitHub Actions (`.github/workflows/ci.yml`) to a VPS: the containers in `docker-compose.yml` (migrations, API
+on 127.0.0.1, worker, daily backups), with the host's nginx for HTTPS behind Cloudflare and the host's Postgres over its
+Unix socket. Configuration lives in GitHub secrets and is written to the server on each deploy. Setup, monitoring,
+backups and restore are in **`docs/deploy.md`**.
+
+Hosts without nginx or Postgres can add `docker-compose.caddy.yml` and `docker-compose.postgres.yml`. With both, the
+whole stack runs locally too (see the end of `docs/deploy.md`).
 
 ## API
 
@@ -90,7 +93,7 @@ src/
   push/                  APNs client (node:http2), alert rules and Live Activity payloads (pure), notifier
   domain/                pure logic ported from the PoC (route points, operators, grid conversion)
 scripts/                 migrate, generate-openapi, import-schedule, import-stations, build-places, capture-darwin
-deploy/                  Caddyfile, backup.sh, deploy.sh (see docs/deploy.md)
+deploy/                  write-config.sh, deploy.sh, backup.sh, nginx site, Caddyfiles (see docs/deploy.md)
 docs/                    RDM field notes and captured API samples (from the PoC)
 test/                    integration tests (supertest + a throwaway Postgres database) and the OpenAPI contract test
 ```

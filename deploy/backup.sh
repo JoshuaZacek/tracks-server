@@ -8,7 +8,7 @@ keep="${BACKUP_KEEP_DAYS:-14}"
 while true; do
   file="/backups/tracks-$(date +%Y-%m-%d).dump"
   if [ ! -f "$file" ]; then
-    if pg_dump --format=custom --exclude-schema='schedule*' \
+    if pg_dump --dbname="$DATABASE_URL" --format=custom --exclude-schema='schedule*' \
         --exclude-table-data=darwin_services --exclude-table-data=darwin_locations \
         --exclude-table-data=push_log --exclude-table-data=meta \
         --file="$file.part"; then

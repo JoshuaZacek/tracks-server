@@ -1,0 +1,29 @@
+# A bundled Caddy for HTTPS, for hosts without a web server of their own (and for trying the
+# stack locally). Use it with COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml in .env.
+#   CADDYFILE=Caddyfile             Let's Encrypt; clients connect directly (DNS only)
+#   CADDYFILE=Caddyfile.cloudflare  behind Cloudflare's proxy (Origin Certificate in secrets/cloudflare/)
+services:
+  caddy:
+    image: caddy:2
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env (e.g. tracks-api.example.com, or localhost to try it locally)}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./deploy/${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ./deploy/cloudflare-origin-pull-ca.pem:/etc/caddy/cloudflare-origin-pull-ca.pem:ro
+      - ./secrets/cloudflare:/etc/caddy/cloudflare:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '5' }
+
+volumes:
+  caddy-data:
+  caddy-config:

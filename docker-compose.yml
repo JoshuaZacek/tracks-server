@@ -1,10 +1,19 @@
-# The production stack on one host: Postgres, a one-shot migration, the API behind Caddy
-# (automatic HTTPS), the worker, and daily database backups.
+# The production stack on one host: a one-shot migration, the API, the worker, and daily
+# database backups, using the Postgres in DATABASE_URL.
 #
-# Configuration comes from `.env` next to this file (see .env.example and docs/deploy.md):
-# DOMAIN and POSTGRES_PASSWORD are required; RDM, Darwin and (optional) APNs settings are
-# passed to the containers as they are. Try it locally with DOMAIN=localhost (Caddy then uses
-# its own local certificate authority).
+# The API listens on 127.0.0.1:${API_PORT} only, for the host's web server (nginx, see
+# deploy/nginx/) to serve over HTTPS. Without a web server of your own, add
+# docker-compose.caddy.yml for a bundled Caddy.
+#
+# By default that's the host's own Postgres over its Unix socket (/var/run/postgresql mounted
+# into the containers): nothing listens on the network, and it survives reboots.
+#   DATABASE_URL=postgres://<user>:<password>@localhost/tracks?host=/var/run/postgresql
+# Without a Postgres of your own, add docker-compose.postgres.yml for a bundled one
+# (COMPOSE_FILE=docker-compose.yml:docker-compose.postgres.yml in .env).
+#
+# Configuration comes from `.env` next to this file; in production, deploy/write-config.sh
+# writes it from GitHub secrets (docs/deploy.md). Try it locally with the bundled Postgres and
+# Caddy, and DOMAIN=localhost (Caddy then uses its own local certificate authority).
 
 x-logging: &logging
   driver: json-file
@@ -19,39 +28,26 @@ x-app: &app
       required: false
   environment: &app-env
     NODE_ENV: production
-    DATABASE_URL: postgres://tracks:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/tracks
+    DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
     DATA_DIR: /data
     PORT: '3000'
-    TRUST_PROXY: '1' # exactly one proxy (Caddy) in front: client IPs for rate limits come from X-Forwarded-For
+    TRUST_PROXY: '1' # exactly one proxy (nginx or Caddy) in front: client IPs for rate limits come from X-Forwarded-For
+  volumes:
+    # The host Postgres's socket directory (DB_SOCKET_DIR); unused with the bundled Postgres.
+    - ${DB_SOCKET_DIR:-/var/run/postgresql}:/var/run/postgresql
   logging: *logging
 
 services:
-  postgres:
-    image: postgres:17
-    environment:
-      POSTGRES_USER: tracks
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: tracks
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U tracks -d tracks']
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    shm_size: 256mb
-    restart: unless-stopped
-    logging: *logging
-
   migrate:
     <<: *app
     command: ['node', 'scripts/migrate.ts']
-    depends_on:
-      postgres: { condition: service_healthy }
     restart: 'no'
 
   api:
     <<: *app
+    # Loopback only: reachable from the host's web server, not from outside.
+    ports:
+      - '127.0.0.1:${API_PORT:-3000}:3000'
     depends_on:
       migrate: { condition: service_completed_successfully }
     # Graceful shutdown drains requests for up to 10 s.
@@ -62,6 +58,7 @@ services:
     <<: *app
     command: ['node', 'src/worker.ts']
     volumes:
+      - ${DB_SOCKET_DIR:-/var/run/postgresql}:/var/run/postgresql
       - data:/data
       # Optional: the APNs .p8 key (set APNS_KEY_PATH=/run/secrets/<file>.p8 in .env).
       - ./secrets:/run/secrets:ro
@@ -73,45 +70,21 @@ services:
     stop_grace_period: 30s
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2
-    environment:
-      DOMAIN: ${DOMAIN:?Set DOMAIN in .env (e.g. tracks-api.example.com, or localhost to try it locally)}
-    ports:
-      - '80:80'
-      - '443:443'
-      - '443:443/udp'
-    volumes:
-      # Caddyfile: Let's Encrypt, clients connect directly. Caddyfile.cloudflare: behind Cloudflare's proxy.
-      - ./deploy/${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
-      - ./deploy/cloudflare-origin-pull-ca.pem:/etc/caddy/cloudflare-origin-pull-ca.pem:ro
-      - ./secrets/cloudflare:/etc/caddy/cloudflare:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      api: { condition: service_healthy }
-    restart: unless-stopped
-    logging: *logging
-
   backup:
-    image: postgres:17
+    # pg_dump/pg_restore 18 handle any older server, whichever Postgres the host runs.
+    image: postgres:18
     entrypoint: ['/bin/sh', '/backup.sh']
     environment:
-      PGHOST: postgres
-      PGUSER: tracks
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      PGDATABASE: tracks
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
     volumes:
+      - ${DB_SOCKET_DIR:-/var/run/postgresql}:/var/run/postgresql
       - ./deploy/backup.sh:/backup.sh:ro
       - ./backups:/backups
     depends_on:
-      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
     restart: unless-stopped
     logging: *logging
 
 volumes:
-  pgdata:
   data:
-  caddy-data:
-  caddy-config:

@@ -92,6 +92,8 @@ jobs:
         if: steps.settings.outputs.ready == 'true'
         env:
           # Secrets
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           KB_STATIONS_API_KEY: ${{ secrets.KB_STATIONS_API_KEY }}
           DARWIN_KAFKA_BOOTSTRAP: ${{ secrets.DARWIN_KAFKA_BOOTSTRAP }}
@@ -107,7 +109,11 @@ jobs:
           CF_ORIGIN_CERT: ${{ secrets.CF_ORIGIN_CERT }}
           CF_ORIGIN_KEY: ${{ secrets.CF_ORIGIN_KEY }}
           # Not secret: defaults, overridable with repository variables
-          CADDYFILE: ${{ vars.CADDYFILE || 'Caddyfile.cloudflare' }}
+          REVERSE_PROXY: ${{ vars.REVERSE_PROXY || 'nginx' }}
+          API_PORT: ${{ vars.API_PORT || '3000' }}
+          CADDYFILE: ${{ vars.CADDYFILE || 'Caddyfile' }}
+          DB_NAME: ${{ vars.DB_NAME || 'tracks' }}
+          DB_SOCKET_DIR: ${{ vars.DB_SOCKET_DIR || '/var/run/postgresql' }}
           LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
           SCHEDULE_REFRESH_TIME: ${{ vars.SCHEDULE_REFRESH_TIME || '04:00' }}
           BACKUP_KEEP_DAYS: ${{ vars.BACKUP_KEEP_DAYS || '14' }}
