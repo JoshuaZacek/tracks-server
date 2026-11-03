@@ -63,9 +63,20 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
+      # Until the one-time setup in docs/deploy.md is done, skip deploying instead of failing.
+      - name: Check deploy settings
+        id: settings
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          if [ -n "$DEPLOY_HOST" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::Deploy skipped: DEPLOY_HOST and the other deploy secrets are not set (see docs/deploy.md)"; fi
+
       - uses: actions/checkout@v5
+        if: steps.settings.outputs.ready == 'true'
 
       - name: Set up SSH
+        if: steps.settings.outputs.ready == 'true'
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
@@ -77,9 +88,11 @@ jobs:
           printf 'Host *\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  ServerAliveInterval 30\n' > ~/.ssh/config
 
       - name: Deploy
+        if: steps.settings.outputs.ready == 'true'
         run: deploy/deploy.sh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
 
       - name: Check the API answers over HTTPS
+        if: steps.settings.outputs.ready == 'true'
         run: |
           for i in $(seq 1 30); do
             if curl -fsS --max-time 5 https://tracks-api.joshuazacek.com/health; then echo; exit 0; fi
@@ -89,5 +102,5 @@ jobs:
           exit 1
 
       - name: Report live-data status
-        if: always()
+        if: always() && steps.settings.outputs.ready == 'true'
         run: curl -fsS --max-time 10 https://tracks-api.joshuazacek.com/v1/status || true
