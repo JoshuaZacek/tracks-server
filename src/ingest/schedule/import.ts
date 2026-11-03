@@ -177,7 +177,9 @@ export async function importSchedule(databaseUrl: string, file: string, log: Log
     await control.query('BEGIN');
     try {
       await control.query(`DROP SCHEMA IF EXISTS ${OLD_SCHEMA} CASCADE`);
-      await control.query(`ALTER SCHEMA ${SCHEDULE_SCHEMA} RENAME TO ${OLD_SCHEMA}`);
+      // Absent after restoring a backup (which leaves the timetable out): then there is nothing to move aside.
+      const { rowCount } = await control.query('SELECT 1 FROM pg_namespace WHERE nspname = $1', [SCHEDULE_SCHEMA]);
+      if (rowCount) await control.query(`ALTER SCHEMA ${SCHEDULE_SCHEMA} RENAME TO ${OLD_SCHEMA}`);
       await control.query(`ALTER SCHEMA ${STAGING_SCHEMA} RENAME TO ${SCHEDULE_SCHEMA}`);
       await control.query('UPDATE stations SET in_schedule = false WHERE in_schedule');
       await control.query(

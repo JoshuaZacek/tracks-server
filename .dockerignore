@@ -8,3 +8,8 @@ openapi
 test
 docs
 *.log
+data
+backups
+secrets
+deploy
+.DS_Store

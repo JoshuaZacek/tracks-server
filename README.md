@@ -13,9 +13,9 @@ The implementation plan, including the phases, lives in `~/.claude/plans/this-pr
 | 2 | Reference data: schedule, stations, departures, trains, places | **done** |
 | 3 | Devices and journeys | **done** |
 | 4 | Darwin ingest and live status | **done** |
-| 5 | Push: APNs alerts and Live Activities | **done** (real-device test pending the APNs key) |
-| 6 | TRUST (optional) | — |
-| 7 | Deployment hardening | — |
+| 5 | Push: APNs alerts and Live Activities | **done** (sending needs an APNs key; dry run until then) |
+| 6 | TRUST (optional) | skipped: Darwin's passing-point reports are enough |
+| 7 | Deployment: Docker stack with HTTPS, backups, health | **done** (`docs/deploy.md`) |
 
 Every endpoint from the plan is implemented.
 
@@ -48,7 +48,12 @@ The worker's notifier turns journey changes into APNs alerts and Live Activity u
 
 Set `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY_PATH` (the `.p8`, outside the repo) and `APNS_BUNDLE_ID` to send. Without them the worker does a **dry run**: it works out every push and records it in `push_log` with outcome `disabled`, which is handy for checking alert rules on real trains.
 
-Or with Docker: `docker compose up --build` (Postgres, migrations, API on :3000 and the worker).
+### Production
+
+`docker-compose.yml` is the production stack: Postgres, migrations, the API behind Caddy (automatic HTTPS), the worker,
+and daily backups. `deploy/deploy.sh user@host` copies the code to a server and (re)starts it. Setup, the timetable
+download, monitoring and restore are in **`docs/deploy.md`**. Try the stack locally with `DOMAIN=localhost` and
+`POSTGRES_PASSWORD=…` in `.env`.
 
 ## API
 
@@ -85,6 +90,7 @@ src/
   push/                  APNs client (node:http2), alert rules and Live Activity payloads (pure), notifier
   domain/                pure logic ported from the PoC (route points, operators, grid conversion)
 scripts/                 migrate, generate-openapi, import-schedule, import-stations, build-places, capture-darwin
+deploy/                  Caddyfile, backup.sh, deploy.sh (see docs/deploy.md)
 docs/                    RDM field notes and captured API samples (from the PoC)
 test/                    integration tests (supertest + a throwaway Postgres database) and the OpenAPI contract test
 ```

@@ -150,3 +150,5 @@ vite.config.ts.timestamp-*
 
 # Runtime data (schedule downloads, OS Open Names zip)
 data/
+backups/
+secrets/

@@ -1,11 +1,36 @@
-# Local or single-host deployment: Postgres, a one-shot migration, the API and the worker.
-# Production adds Caddy for TLS in front of `api` (Phase 7).
+# The production stack on one host: Postgres, a one-shot migration, the API behind Caddy
+# (automatic HTTPS), the worker, and daily database backups.
+#
+# Configuration comes from `.env` next to this file (see .env.example and docs/deploy.md):
+# DOMAIN and POSTGRES_PASSWORD are required; RDM, Darwin and (optional) APNs settings are
+# passed to the containers as they are. Try it locally with DOMAIN=localhost (Caddy then uses
+# its own local certificate authority).
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 10m, max-file: '5' }
+
+x-app: &app
+  build: .
+  image: tracks-server:latest
+  init: true
+  env_file:
+    - path: .env
+      required: false
+  environment: &app-env
+    NODE_ENV: production
+    DATABASE_URL: postgres://tracks:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/tracks
+    DATA_DIR: /data
+    PORT: '3000'
+    TRUST_PROXY: '1' # exactly one proxy (Caddy) in front: client IPs for rate limits come from X-Forwarded-For
+  logging: *logging
+
 services:
   postgres:
     image: postgres:17
     environment:
       POSTGRES_USER: tracks
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracks}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: tracks
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -14,51 +39,76 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    shm_size: 256mb
     restart: unless-stopped
+    logging: *logging
 
   migrate:
-    build: .
+    <<: *app
     command: ['node', 'scripts/migrate.ts']
-    environment: &env
-      DATABASE_URL: postgres://tracks:${POSTGRES_PASSWORD:-tracks}@postgres:5432/tracks
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      TRUST_PROXY: ${TRUST_PROXY:-false}
-      DATA_DIR: /data
-      SCHEDULE_REFRESH_TIME: ${SCHEDULE_REFRESH_TIME:-04:00}
-      RDM_AUTH_HEADER: ${RDM_AUTH_HEADER:-x-apikey}
-      KB_STATIONS_URL: ${KB_STATIONS_URL:-}
-      KB_STATIONS_API_KEY: ${KB_STATIONS_API_KEY:-}
-      NWR_SCHEDULE_URL: ${NWR_SCHEDULE_URL:-}
-      NWR_SCHEDULE_API_KEY: ${NWR_SCHEDULE_API_KEY:-}
-      NWR_SCHEDULE_USERNAME: ${NWR_SCHEDULE_USERNAME:-}
-      NWR_SCHEDULE_PASSWORD: ${NWR_SCHEDULE_PASSWORD:-}
     depends_on:
       postgres: { condition: service_healthy }
     restart: 'no'
 
   api:
-    build: .
-    environment:
-      <<: *env
-      PORT: 3000
-    ports:
-      - '${API_PORT:-3000}:3000'
+    <<: *app
     depends_on:
       migrate: { condition: service_completed_successfully }
+    # Graceful shutdown drains requests for up to 10 s.
+    stop_grace_period: 15s
     restart: unless-stopped
 
   worker:
-    build: .
+    <<: *app
     command: ['node', 'src/worker.ts']
-    environment: *env
-    # Put CIF_ALL_FULL_DAILY_toc-full.json.gz here (or set NWR_SCHEDULE_URL); the worker imports it.
     volumes:
-      - ./data:/data
+      - data:/data
+      # Optional: the APNs .p8 key (set APNS_KEY_PATH=/run/secrets/<file>.p8 in .env).
+      - ./secrets:/run/secrets:ro
     healthcheck:
       disable: true
     depends_on:
       migrate: { condition: service_completed_successfully }
+    # Shutdown flushes and commits the Darwin consumer's position; give it time.
+    stop_grace_period: 30s
     restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env (e.g. tracks-api.example.com, or localhost to try it locally)}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+    logging: *logging
+
+  backup:
+    image: postgres:17
+    entrypoint: ['/bin/sh', '/backup.sh']
+    environment:
+      PGHOST: postgres
+      PGUSER: tracks
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGDATABASE: tracks
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./deploy/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+    logging: *logging
 
 volumes:
   pgdata:
+  data:
+  caddy-data:
+  caddy-config:

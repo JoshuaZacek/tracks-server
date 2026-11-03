@@ -13,6 +13,9 @@ COPY package.json ./
 COPY src ./src
 COPY scripts ./scripts
 COPY assets ./assets
+# The worker downloads and imports the timetable here; a named volume mounted at /data
+# takes this ownership, so the unprivileged user can write to it.
+RUN mkdir -p /data && chown node:node /data
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \

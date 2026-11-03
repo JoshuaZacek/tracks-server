@@ -16,6 +16,11 @@ const server = app.listen(config.port, (err?: Error) => {
   }
   log.info(`API listening on http://localhost:${config.port}`);
 });
+// Behind Caddy, idle upstream connections are reused: Node must keep them open longer than
+// the proxy does, or a request can land on a socket Node is closing (a sporadic 502).
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
+server.requestTimeout = 30_000;
 
 let stopping = false;
 async function shutdown(signal: string) {

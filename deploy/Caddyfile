@@ -1,0 +1,11 @@
+# HTTPS in front of the API. Caddy gets and renews a Let's Encrypt certificate for $DOMAIN by
+# itself (ports 80 and 443 must reach this host, and DNS must point $DOMAIN here).
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:3000
+	header -Server
+	log {
+		output stdout
+		format console
+	}
+}
