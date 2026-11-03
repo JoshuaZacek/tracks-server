@@ -1,0 +1,26 @@
+# HTTPS behind Cloudflare's proxy (DNS record "Proxied"). Select it with CADDYFILE=Caddyfile.cloudflare in .env.
+#
+# - Certificate: a Cloudflare Origin Certificate (trusted by Cloudflare only) in secrets/cloudflare/.
+#   Cloudflare's SSL/TLS mode must be "Full (strict)".
+# - Only Cloudflare may connect: with Authenticated Origin Pulls turned on, Cloudflare presents a client
+#   certificate signed by its origin-pull CA, and anything else fails the TLS handshake. Visitors can't
+#   reach this server around Cloudflare.
+# - Client IPs: since only Cloudflare connects, its CF-Connecting-IP header is the visitor's real address.
+#   It becomes the only X-Forwarded-For entry the API sees (TRUST_PROXY=1), so rate limits are per visitor.
+{$DOMAIN} {
+	tls /etc/caddy/cloudflare/origin.pem /etc/caddy/cloudflare/origin-key.pem {
+		client_auth {
+			mode require_and_verify
+			trust_pool file /etc/caddy/cloudflare-origin-pull-ca.pem
+		}
+	}
+	encode zstd gzip
+	reverse_proxy api:3000 {
+		header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+	}
+	header -Server
+	log {
+		output stdout
+		format console
+	}
+}

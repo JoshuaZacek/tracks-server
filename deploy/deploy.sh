@@ -17,7 +17,7 @@ rsync -az --delete \
 
 ssh "$HOST" "set -e; cd '$DIR'
   test -f .env || { echo 'No .env on the server: see docs/deploy.md'; exit 1; }
-  mkdir -p secrets backups
+  mkdir -p secrets/cloudflare backups
   docker compose up -d --build --remove-orphans
   docker image prune -f >/dev/null
   docker compose ps --format '{{.Service}}: {{.Status}}'"

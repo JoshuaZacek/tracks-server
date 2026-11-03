@@ -4,7 +4,7 @@ Everything runs on one Linux server with Docker, using `docker-compose.yml`:
 
 | Service | What it does |
 |---|---|
-| `caddy` | HTTPS on ports 80/443. It gets and renews a free Let's Encrypt certificate for `DOMAIN` by itself, and forwards requests to the API. |
+| `caddy` | HTTPS on ports 80/443, forwarding to the API. The certificate is Let's Encrypt's (automatic) or, behind Cloudflare, a Cloudflare Origin Certificate. |
 | `api` | The Express API (not reachable directly, only through Caddy) |
 | `worker` | Timetable and station refresh, the Darwin consumer, the journey updater and push (a dry run without an APNs key) |
 | `postgres` | The database: about 1 GB, mostly the timetable |
@@ -32,11 +32,41 @@ sudo usermod -aG docker "$USER"                # then log out and back in
   put this API behind that server: remove the `caddy` service, publish `api` on `127.0.0.1:3000`, and proxy
   `DOMAIN` to it. Keep `TRUST_PROXY=1`.
 
-## 2. DNS
+## 2. DNS and certificates
 
-At the DNS provider for `joshuazacek.com`, add an **A record** for the API's name (for example `tracks-api`) pointing at
-the server's IPv4 address. Add an **AAAA** record with its IPv6 address too, if it has one. Caddy can only get a certificate
-once the name resolves to the server.
+Add an **A record** for the API's name (`tracks-api`) pointing at the server's IPv4 address. Then choose one of the two
+modes below.
+
+### Direct (DNS only): `CADDYFILE=Caddyfile`, the default
+
+The record is **DNS only** (grey cloud in Cloudflare). Clients connect straight to the server, and Caddy gets a Let's
+Encrypt certificate by itself once the name resolves to the server. Ports 80 and 443 must be open to everyone.
+
+### Cloudflare: `CADDYFILE=Caddyfile.cloudflare`
+
+The record is **Proxied** (orange cloud): clients connect to Cloudflare, and Cloudflare connects to the server. Set up in
+the Cloudflare dashboard for `joshuazacek.com`, in this order:
+
+1. **SSL/TLS → Origin Server → Create Certificate.** Use the defaults ("Generate private key and CSR with Cloudflare",
+   15 years) with the hostname `tracks-api.joshuazacek.com`. Save the two texts it shows, on the server:
+   - "Origin Certificate" → `~/tracks-server/secrets/cloudflare/origin.pem`
+   - "Private Key" → `~/tracks-server/secrets/cloudflare/origin-key.pem`
+   - The private key is shown only once. Keep both files `chmod 644` and owned by `deploy`: Caddy's container must be
+     able to read them, and nothing outside the server ever sees them.
+2. **SSL/TLS → Overview: encryption mode "Full (strict)".** "Flexible" would talk plain HTTP to the server, which
+   redirects to HTTPS, in a loop.
+3. **SSL/TLS → Origin Server → Authenticated Origin Pulls: On.** Cloudflare then presents its client certificate to the
+   server. Caddy only accepts connections with that certificate (`deploy/cloudflare-origin-pull-ca.pem`, Cloudflare's
+   public CA, valid until 2029), so nobody can reach the server around Cloudflare.
+   - Turn this on **before** deploying: with it off, Cloudflare's requests are refused (error 525/526).
+4. In the server's `.env`, set `CADDYFILE=Caddyfile.cloudflare`.
+
+**What this gives you:**
+- **Visitors' addresses:** Caddy passes the visitor's address from Cloudflare's `CF-Connecting-IP` header to the API.
+  That's safe only because nothing but Cloudflare can connect, and it means rate limits apply per visitor, not per
+  Cloudflare server.
+- **Firewall:** only 443 needs to be open, though 80 does no harm (Caddy just redirects).
+- **HTTP/3:** visitors get HTTP/3 from Cloudflare.
 
 ## 3. `.env` on the server
 
@@ -44,6 +74,7 @@ The deploy script never copies `.env`: the server keeps its own. Create `~/track
 
 ```sh
 DOMAIN=tracks-api.joshuazacek.com
+CADDYFILE=Caddyfile.cloudflare        # or Caddyfile for DNS only (see step 2)
 POSTGRES_PASSWORD=<run: openssl rand -hex 24>
 SCHEDULE_REFRESH_TIME=04:00
 

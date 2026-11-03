@@ -82,7 +82,10 @@ services:
       - '443:443'
       - '443:443/udp'
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Caddyfile: Let's Encrypt, clients connect directly. Caddyfile.cloudflare: behind Cloudflare's proxy.
+      - ./deploy/${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ./deploy/cloudflare-origin-pull-ca.pem:/etc/caddy/cloudflare-origin-pull-ca.pem:ro
+      - ./secrets/cloudflare:/etc/caddy/cloudflare:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
