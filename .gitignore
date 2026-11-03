@@ -152,3 +152,7 @@ vite.config.ts.timestamp-*
 data/
 backups/
 secrets/
+
+# iCloud Drive conflict copies ("file 2.ts"): the Desktop folder syncs with iCloud
+* [0-9].*
+* [0-9]
