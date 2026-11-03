@@ -89,7 +89,7 @@ and `can="true"` when cancelled at that location.
 
 | | Night (01:56–01:59) | Daytime |
 |---|---|---|
-| Messages/s (mean / p95 / max) | 6.2 / 33 / 115 | **to measure** |
+| Messages/s (mean / p95 / max) | 6.2 / 33 / 115 | **~32 mean** (12:31–14:36, from offsets) |
 | Mean message size | 1.7 KB (max 17 KB) | |
 
 Even at 10–20× the night rate, this is a few hundred small JSON messages a second, which is comfortable for one Node worker. A
@@ -111,6 +111,34 @@ What this means for Phase 4:
   being tracked from LDBWS Service Details**, using the PoC's proven client. That is one call per tracked train, once, not
   polling. Status is shown as `stale` until the backfill or a fresh TS arrives.
 - Keep the worker's downtime short (graceful restarts, Docker `restart: unless-stopped`).
+
+### Measured: 3 Nov, daytime (from an outage)
+
+The consumer crashed at 12:31 and was restarted at 14:35 (see below). Offsets then: committed `443,386,370`, low
+`443,514,063`, high `443,625,029`. So:
+
+- **About 239k messages in 2 h 04 min, ~32 messages/s on average** in the daytime. The worker kept up with 0.3 s lag
+  after catching up, so throughput isn't a concern.
+- **Only about 111k messages are retained in the daytime: roughly an hour.** Any time the consumer isn't reading for
+  more than about an hour loses updates for good. Here about 128k messages were lost, and `gapAt` recorded it.
+
+### Consumer crash (3 Nov 12:31) and the fix
+
+After about 40 minutes of flaky connections to Confluent (TLS disconnects, `ECONNRESET`, `ETIMEDOUT`), the group coordinator
+dropped our member, and kafkajs raised `KafkaJSNonRetriableError: The coordinator is not aware of this member`. kafkajs
+**never restarts a consumer after a non-retriable crash**, and the worker carried on without one for two hours. Its
+heartbeat still showed it as healthy.
+
+Fixes:
+- **Self-restart:** the consumer now restarts itself. On a non-retriable `CRASH`, a failed start, or a stall (nothing
+  processed, not even heartbeats, for 3 minutes), it disconnects and starts a fresh consumer. Backoff is 5 s, 15 s, 30 s,
+  1 min, 2 min, then 5 min, and the consumer resumes from the committed offset.
+- **Overall health flag:** `/v1/status` has a top-level `healthy` that is false when the Darwin feed is down, even if the
+  worker process is alive.
+- **No alerts on frozen data:** while the feed is down, alerts and Live Activity push-to-start wait. "Approaching" (a
+  time rule on an estimate) also needs a Darwin message about that train within the last 15 minutes.
+
+Still open: backfilling the journeys being tracked (e.g. from LDBWS) after a gap longer than retention.
 
 ## TRUST
 

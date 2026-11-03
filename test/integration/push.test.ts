@@ -65,13 +65,23 @@ async function deliver(...uRs: object[]) {
   for (const uR of uRs) batch.add(parseMessage(message(uR)), clock.getTime());
   await lookups.ready(0);
   await flushBatch(db, batch, lookups.crsOf);
+  // The store stamps runs with the database clock; follow the test clock instead.
+  await db.updateTable('darwin_services').set({ updated_at: clock }).where('rid', 'in', [...batch.touched().rids]).execute();
+  await feedAlive();
   const changes = await updateJourneys(deps(), await journeysForRuns(db, batch.touched()));
   notifier.journeysChanged(changes.map((c) => c.journey.id));
   await notifier.idle();
 }
 
-/** The worker's clock tick. */
-async function tick() {
+/** The consumer's record that the feed is alive (heartbeats arrive every few seconds). */
+async function feedAlive(at = clock) {
+  await recordFeed(db, { lastMessageAt: at.toISOString(), lagSeconds: 0.3, gapAt: null });
+  resetFeedCache();
+}
+
+/** The worker's clock tick; the feed is alive unless told otherwise. */
+async function tick({ feedUp = true } = {}) {
+  await feedAlive(feedUp ? clock : new Date(clock.getTime() - 10 * 60_000));
   const changes = await updateJourneys(deps(), await journeysDueForTick(db, clock));
   notifier.journeysChanged(changes.map((c) => c.journey.id));
   notifier.tick();
@@ -94,7 +104,7 @@ beforeEach(async () => {
   await recordFeed(db, { lastMessageAt: clock.toISOString(), lagSeconds: 0.3, gapAt: null });
   resetFeedCache();
   sender = new FakeSender();
-  notifier = createNotifier({ db, log, sender, bundleId: BUNDLE, now: () => clock });
+  notifier = createNotifier({ db, log, sender, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
   ({ auth } = await registerDevice(api));
   await api().patch('/v1/devices/me').set(auth).send({ apnsToken: APNS_TOKEN, apnsEnvironment: 'sandbox' }).expect(200);
 });
@@ -133,7 +143,11 @@ describe('alerts', () => {
     await deliver(ts([kgx({ dep: { at: '17:12' } }), york({ arr: { et: '19:10' } })]));
     expect(alertsIn(sender.take())).toEqual(["Left London Kings Cross at 17:12, 12 min late. Due at York at 19:10."]);
 
-    // Nothing changes, but time passes: the tick sends "approaching" 10 minutes out.
+    // Nothing changes, but time passes: the tick sends "approaching" 10 minutes out, as the
+    // train is still reporting (here, the same estimate again at 18:58).
+    clock = new Date('2026-11-03T18:58:00Z');
+    await deliver(ts([york({ arr: { et: '19:10' } })]));
+    expect(sender.take()).toEqual([]);
     clock = new Date('2026-11-03T19:01:00Z');
     await tick();
     expect(alertsIn(sender.take())).toEqual(['Arriving at York at 19:10.']);
@@ -177,6 +191,32 @@ describe('alerts', () => {
     expect((await api().get('/v1/devices/me').set(auth).expect(200)).body.apnsTokenRegistered).toBe(false);
   });
 
+  it('holds alerts while the Darwin feed is down, and works them out from fresh data when it is back', async () => {
+    const journey = await save();
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' }, plat: { conf: 'true', '': '7' } })]));
+    sender.take();
+    clock = new Date('2026-11-03T17:13:00Z');
+    await deliver(ts([kgx({ dep: { at: '17:12' } }), york({ arr: { et: '19:10' } })]));
+    expect(alertsIn(sender.take())).toEqual(["Left London Kings Cross at 17:12, 12 min late. Due at York at 19:10."]);
+
+    // The feed dies at 17:13. By 19:05 the frozen estimate says York is 5 minutes away: no "approaching".
+    clock = new Date('2026-11-03T19:05:00Z');
+    await tick({ feedUp: false });
+    expect(sender.take()).toEqual([]);
+    expect((await pushLog(journey.id)).map((r) => r.kind)).not.toContain('approaching');
+
+    // Feed back, but nothing new about this train yet: still no "approaching" from the old estimate.
+    await tick();
+    expect(sender.take()).toEqual([]);
+
+    // Fresh data: the train is now due at 19:20, so "approaching" comes once it is 10 minutes out.
+    await deliver(ts([york({ arr: { et: '19:20' } })]));
+    expect(alertsIn(sender.take())).toEqual(['Running 20 min late: now due at York at 19:20.']);
+    clock = new Date('2026-11-03T19:11:00Z');
+    await deliver(ts([york({ arr: { et: '19:20' }, plat: { conf: 'true', '': '4' } })]));
+    expect(alertsIn(sender.take())).toEqual(['Arriving at York at 19:20, platform 4.']);
+  });
+
   it('records alerts it cannot send: no token, or APNs not configured (dry run)', async () => {
     await api().patch('/v1/devices/me').set(auth).send({ apnsToken: null }).expect(200);
     const journey = await save();
@@ -185,7 +225,7 @@ describe('alerts', () => {
     expect(await pushLog(journey.id)).toEqual([{ channel: 'alert', kind: 'platform', outcome: 'no_token' }]);
 
     await api().patch('/v1/devices/me').set(auth).send({ apnsToken: APNS_TOKEN }).expect(200);
-    notifier = createNotifier({ db, log, sender: null, bundleId: BUNDLE, now: () => clock });
+    notifier = createNotifier({ db, log, sender: null, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
     await deliver(ts([kgx({ plat: { conf: 'true', '': '9' } })]));
     expect((await pushLog(journey.id)).at(-1)).toEqual({ channel: 'alert', kind: 'platform', outcome: 'disabled' });
   });
@@ -287,7 +327,11 @@ describe('Live Activities', () => {
     await tick();
     expect(activityPushes()).toEqual([]);
 
+    // Not while the feed is down: the content would be out of date.
     clock = new Date('2026-11-03T16:31:00Z');
+    await tick({ feedUp: false });
+    expect(activityPushes()).toEqual([]);
+
     await tick();
     const [push] = activityPushes();
     expect(push).toMatchObject({ token: START_TOKEN, topic: `${BUNDLE}.push-type.liveactivity`, priority: 10 });

@@ -54,7 +54,13 @@ async function main() {
   await beat();
   heartbeat = setInterval(() => void beat(), HEARTBEAT_MS);
   stopRefresh = startDailyRefresh(db, config, log);
-  stopTracking = await startTracking(db, config, log, createNotifier({ db, log, sender: apnsSender(), bundleId: config.apns.bundleId }));
+  stopTracking = await startTracking(db, config, log, createNotifier({
+      db,
+      log,
+      sender: apnsSender(),
+      bundleId: config.apns.bundleId,
+      darwinEnabled: Boolean(config.rdm.darwin.bootstrap),
+    }),);
 }
 
 /** The APNs client, or null for a dry run (pushes are worked out and logged but not sent). */

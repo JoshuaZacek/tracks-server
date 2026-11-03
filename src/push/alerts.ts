@@ -98,6 +98,7 @@ export function planAlerts(
   j: JourneyFacts,
   prefs: Prefs,
   now: Date,
+  opts: { estimatesFresh?: boolean } = {},
 ): { alerts: Alert[]; next: AlertState } {
   if (!told) return { alerts: [], next: baselineOf(s) };
   const next = { ...told };
@@ -172,8 +173,9 @@ export function planAlerts(
     }
   }
 
-  // Approaching my destination (a time rule, so the clock tick checks it too).
-  if (s.state === 'departed' && !told.approaching) {
+  // Approaching my destination (a time rule, so the clock tick checks it too). It
+  // rests on the expected arrival, so it waits until that estimate is recent.
+  if (s.state === 'departed' && !told.approaching && (opts.estimatesFresh ?? true)) {
     const due = dueAt(s, j);
     if (minutesBetween(now, due) <= APPROACHING_MIN) {
       next.approaching = true;

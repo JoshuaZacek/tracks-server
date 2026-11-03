@@ -28,6 +28,11 @@ const Readiness = z
 
 export const ServerStatus = z
   .object({
+    healthy: z.boolean().meta({
+      description:
+        'Everything that live tracking needs is working: timetable loaded, worker running and, when Darwin is enabled, the feed ' +
+        'flowing. Point monitoring at this; `worker.healthy` only says the process is alive.',
+    }),
     version: z.string(),
     serverTime: DateTime,
     schedule: z.object({
@@ -107,7 +112,10 @@ export const systemRoutes: AnyRoute[] = [
       ]);
       const heartbeatAt = heartbeat ? new Date(heartbeat) : null;
       const iso = (v: string | null) => (v ? toUkIso(new Date(v)) : null);
+      const workerHealthy = heartbeatAt !== null && Date.now() - heartbeatAt.getTime() < WORKER_STALE_MS;
+      const darwinOk = !darwinEnabled(deps) || feedHealthy(feed);
       return {
+        healthy: importedAt !== null && workerHealthy && darwinOk,
         version,
         serverTime: toUkIso(new Date()),
         schedule: { loaded: importedAt !== null, importedAt: iso(importedAt), generatedAt: iso(generatedAt) },
@@ -123,7 +131,7 @@ export const systemRoutes: AnyRoute[] = [
         push: { enabled: apnsConfigured(deps.config), sentLastHour: pushes.rows[0]!.sent, failedLastHour: pushes.rows[0]!.failed },
         worker: {
           lastHeartbeatAt: heartbeatAt ? toUkIso(heartbeatAt) : null,
-          healthy: heartbeatAt !== null && Date.now() - heartbeatAt.getTime() < WORKER_STALE_MS,
+          healthy: workerHealthy,
         },
       };
     },

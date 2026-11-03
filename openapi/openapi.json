@@ -144,6 +144,10 @@
       "ServerStatus": {
         "type": "object",
         "properties": {
+          "healthy": {
+            "type": "boolean",
+            "description": "Everything that live tracking needs is working: timetable loaded, worker running and, when Darwin is enabled, the feed flowing. Point monitoring at this; `worker.healthy` only says the process is alive."
+          },
           "version": {
             "type": "string"
           },
@@ -308,6 +312,7 @@
           }
         },
         "required": [
+          "healthy",
           "version",
           "serverTime",
           "schedule",

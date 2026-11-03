@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import type { Db } from '../db/client.ts';
 import type { ApnsEnvironment, JourneyRow, LiveActivityRow, NotificationPrefs, PushOutcome } from '../db/types.ts';
 import { operatorName } from '../domain/operators.ts';
+import { feedHealthy, feedState } from '../live/feed.ts';
 import { canonicalJson } from '../live/updater.ts';
 import type { Logger } from '../logger.ts';
 import { DEFAULT_PREFS } from '../modules/devices/schemas.ts';
@@ -39,6 +40,8 @@ export interface NotifierOptions {
   log: Logger;
   sender: PushSender | null;
   bundleId: string;
+  /** Darwin is configured: alerts then wait for a healthy feed. */
+  darwinEnabled: boolean;
   now?: () => Date;
 }
 
@@ -46,6 +49,8 @@ export interface NotifierOptions {
 export const LIVE_ACTIVITY_MIN_INTERVAL_MS = 15_000;
 /** Push-to-start this long before scheduled departure. */
 export const AUTO_START_BEFORE_MIN = 30;
+/** "Approaching" is a time rule on an estimate: only trust it if Darwin said something about the train this recently. */
+export const FRESH_RUN_MS = 15 * 60_000;
 const CONCURRENCY = 16;
 const PUSH_LOG_DAYS = 7;
 
@@ -124,6 +129,18 @@ export function createNotifier(opts: NotifierOptions) {
   const now = opts.now ?? (() => new Date());
   const activityTopic = `${bundleId}.push-type.liveactivity`;
 
+  /**
+   * Live data is flowing (or there is none to wait for). While the Darwin feed
+   * is down, statuses are frozen at the last update, so anything alerts would
+   * say could be wrong: alerts and push-to-start wait. alert_state isn't
+   * advanced meanwhile, so when data returns, alerts are worked out from fresh
+   * data (and the age limits drop ones that are no longer news).
+   */
+  async function liveDataHealthy() {
+    if (!opts.darwinEnabled) return true;
+    return feedHealthy(await feedState(db), now().getTime());
+  }
+
   const pending = new Set<string>();
   let tickDue = false;
   let running: Promise<void> | null = null;
@@ -157,11 +174,11 @@ export function createNotifier(opts: NotifierOptions) {
     return row?.id ?? null;
   }
 
-  async function processAlerts(j: JourneyForPush) {
+  async function processAlerts(j: JourneyForPush, runFresh: boolean) {
     const status = j.status as LiveStatusOut | null;
     if (!status) return;
     const told = j.alert_state as AlertState | null;
-    const { alerts, next } = planAlerts(told, status, factsOf(j), effectivePrefs(j), now());
+    const { alerts, next } = planAlerts(told, status, factsOf(j), effectivePrefs(j), now(), { estimatesFresh: runFresh || !opts.darwinEnabled });
     if (canonicalJson(next) !== canonicalJson(told)) {
       await db.updateTable('journeys').set({ alert_state: JSON.stringify(next) }).where('id', '=', j.id).execute();
     }
@@ -228,7 +245,20 @@ export function createNotifier(opts: NotifierOptions) {
       .execute()) as JourneyForPush[];
   }
 
+  /** Darwin runs that had a message within FRESH_RUN_MS. */
+  async function freshRuns(rids: string[]) {
+    if (!rids.length) return new Set<string>();
+    const rows = await db
+      .selectFrom('darwin_services')
+      .select('rid')
+      .where('rid', 'in', rids)
+      .where('updated_at', '>', new Date(now().getTime() - FRESH_RUN_MS))
+      .execute();
+    return new Set(rows.map((r) => r.rid));
+  }
+
   async function processJourneys(ids: string[]) {
+    const alertsOn = await liveDataHealthy();
     for (let i = 0; i < ids.length; i += 500) {
       const chunk = ids.slice(i, i + 500);
       const [journeys, activities] = await Promise.all([
@@ -236,9 +266,10 @@ export function createNotifier(opts: NotifierOptions) {
         db.selectFrom('live_activities').selectAll().where('journey_id', 'in', chunk).execute(),
       ]);
       const byJourney = new Map(activities.map((a) => [a.journey_id, a]));
+      const fresh = alertsOn ? await freshRuns(journeys.flatMap((j) => (j.rid ? [j.rid] : []))) : new Set<string>();
       await eachLimit(journeys, CONCURRENCY, async (j) => {
         try {
-          await processAlerts(j);
+          if (alertsOn) await processAlerts(j, j.rid !== null && fresh.has(j.rid));
           await processLiveActivity(j, byJourney.get(j.id));
         } catch (err) {
           log.error({ err, journey: j.id }, 'Push failed');
@@ -303,7 +334,7 @@ export function createNotifier(opts: NotifierOptions) {
       UNION
       SELECT journey_id FROM live_activities WHERE ended_at IS NULL`.execute(db);
     await processJourneys(rows.map((r) => r.id));
-    await autoStart();
+    if (await liveDataHealthy()) await autoStart();
   }
 
   async function drain() {

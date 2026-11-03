@@ -22,6 +22,7 @@ describe('system endpoints', () => {
   it('GET /v1/status reports a missing worker as unhealthy', async () => {
     const res = await api().get('/v1/status').expect(200);
     expect(res.body.worker).toEqual({ lastHeartbeatAt: null, healthy: false });
+    expect(res.body.healthy).toBe(false);
     expect(res.body.serverTime).toMatch(ISO_NO_FRACTION);
   });
 
