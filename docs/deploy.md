@@ -26,7 +26,12 @@ timetable import. The `tracks` database is about 1 GB, mostly the timetable.
 
 ## 1. Server, once
 
-On the VPS, as a user with `sudo`:
+`deploy/setup-host.sh` does sections 1–3 in one go: Docker, the database and `pg_hba.conf` line, the certificate, and
+the nginx site. Each step checks what's already there, so it's safe to run again. Copy it to the VPS with
+`deploy/nginx/tracks-api.conf` and `deploy/cloudflare-origin-pull-ca.pem`, then run
+`sudo bash setup-host.sh <deploy-user> <db-user> tracks-api.joshuazacek.com`.
+
+The same steps by hand, on the VPS as a user with `sudo`:
 
 ```sh
 curl -fsSL https://get.docker.com | sudo sh          # Docker Engine + Compose plugin (skip if installed)
