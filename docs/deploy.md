@@ -190,13 +190,29 @@ Optional: under Settings → Environments → `production`, add yourself as a re
 ## Timetable
 
 The Network Rail timetable has to be refreshed regularly: short-term changes (engineering works, extra trains) only appear
-in newer files. Either:
+in newer files. The worker downloads it from **Network Rail Open Data (NROD)**, which is free:
 
-- **Automatic:** set `NWR_SCHEDULE_URL` (plus `NWR_SCHEDULE_USERNAME`/`PASSWORD` for HTTP Basic auth, or
-  `NWR_SCHEDULE_API_KEY` for an `x-apikey` header). The worker downloads it daily and follows redirects.
-  - With a free Network Rail Open Data account (subscribed to the SCHEDULE feed for all TOCs), the URL is
-    `https://publicdatafeeds.networkrail.co.uk/ntrod/CifFileAuthenticate?type=CIF_ALL_FULL_DAILY&day=toc-full`.
-- **By hand:** copy a fresh file as in "First start". It's imported within a day, or straight away after `restart worker`.
+1. Register at <https://publicdatafeeds.networkrail.co.uk/> (new accounts can take a while to be activated).
+2. Under **My Feeds**, subscribe to **SCHEDULE** for **All TOCs**. The daily full extract is part of that subscription.
+3. Add the repository secrets and deploy:
+   - `NWR_SCHEDULE_URL` = `https://publicdatafeeds.networkrail.co.uk/ntrod/CifFileAuthenticate?type=CIF_ALL_FULL_DAILY&day=toc-full`
+   - `NWR_SCHEDULE_USERNAME` = the account's email address
+   - `NWR_SCHEDULE_PASSWORD` = its password
+
+**What the worker then does:**
+- **When:** downloads at `SCHEDULE_REFRESH_TIME` (04:00 UK) each day, after Network Rail publishes the night's extract,
+  and at startup if its copy is over 20 hours old.
+- **Credentials:** they go to NROD only. NROD redirects to a pre-signed storage URL, and the credentials aren't sent on
+  there.
+- **Checks before use:** the file must decompress to the end, start with the timetable header and end with the EOF
+  record, and be newer than the one imported. Otherwise the current timetable stays.
+- **Failures:** retried hourly, five times. The log says `Refresh: downloaded a new timetable` (with its generation time)
+  or why not.
+- **Import:** about 20 s, with no interruption to the API (the new timetable is built alongside and swapped in).
+- `/v1/status` → `schedule.generatedAt` shows which extract is live.
+
+**By hand instead:** copy a fresh file as in "First start". It's imported within a day, or straight away after
+`docker compose restart worker`.
 
 ## Monitoring
 
