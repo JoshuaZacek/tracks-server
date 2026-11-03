@@ -137,11 +137,12 @@ export function planAlerts(
   if (isDeparted(s) && !told.departed) {
     next.departed = true;
     departedNow = true;
-    const at = service?.actualDeparture ?? service?.expectedDeparture ?? j.scheduledDeparture;
-    const fresh = -minutesBetween(now, at) <= DEPARTED_FRESH_MIN;
+    // Only with a reported departure: one inferred from later reports (a feed gap) has no time to tell.
+    const at = service?.actualDeparture ?? null;
+    const fresh = at !== null && -minutesBetween(now, at) <= DEPARTED_FRESH_MIN;
     const d = service?.delayMinutes ?? 0;
     if (s.state === 'departed' && fresh) {
-      add('departed', prefs.departure, 'departed', `Left ${j.fromName} at ${hhmm(at)}, ${lateText(d)}. Due at ${j.toName} at ${hhmm(dueAt(s, j))}.`);
+      add('departed', prefs.departure, 'departed', `Left ${j.fromName} at ${hhmm(at!)}, ${lateText(d)}. Due at ${j.toName} at ${hhmm(dueAt(s, j))}.`);
     }
   }
 

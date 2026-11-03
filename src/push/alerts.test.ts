@@ -151,6 +151,12 @@ describe('planAlerts', () => {
     expect(plan(quiet, status({ state: 'arrived', actualArrival: t('19:00') }), at('20:00')).alerts).toEqual([]);
   });
 
+  it('does not announce a departure that was only inferred from later reports (no departure time)', () => {
+    const r = plan(quiet, status({ state: 'departed', delay: null, actualDeparture: null }), at('17:05'));
+    expect(r.alerts.map((a) => a.kind)).not.toContain('departed');
+    expect(r.next.departed).toBe(true);
+  });
+
   it('alerts once on cancellation, with nothing else', () => {
     const r = plan(quiet, status({ state: 'cancelled', cancelled: true, platform: '7', delay: 30 }));
     expect(bodies(r)).toEqual(['cancelled: This train has been cancelled.']);

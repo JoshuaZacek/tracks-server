@@ -198,6 +198,12 @@ export function computeJourneyStatus(j: JourneyInput, darwin: DarwinRunData | nu
   const run = new DarwinRun(darwin.locations, departureMin, ctx.crsOf);
   const reason = (code: string | null, kind: 'late' | 'cancel') => (code ? (ctx.reasonText?.(code, kind) ?? null) : null);
 
+  // The furthest point Darwin has reported the train at. A stop Darwin has nothing for (its
+  // messages fell in a feed gap longer than Kafka keeps them) counts as passed once the train
+  // has been reported somewhere planned after it; its own times stay unknown.
+  const reported = run.lastActual >= 0 ? run.locations[run.lastActual]! : null;
+  const reportedBeyond = (scheduledMin: number) => reported !== null && reported.at > scheduledMin;
+
   const stops: (z.input<typeof ProgressStop> & { r: Resolved | null; scheduledMin: number })[] = [];
   for (let i = j.fromIndex; i <= j.toIndex; i++) {
     const cp = cps[i]!;
@@ -209,7 +215,11 @@ export function computeJourneyStatus(j: JourneyInput, darwin: DarwinRunData | nu
     const actual = t?.actual ?? null;
     const expected = actual === null ? (t?.expected ?? null) : null;
     const best = actual ?? expected;
-    const passed = r ? (isBoard ? r.dep.actual !== null || r.index < run.lastActual : hasActual(r) || r.index < run.lastActual) : false;
+    const passed = r
+      ? isBoard
+        ? r.dep.actual !== null || r.index < run.lastActual
+        : hasActual(r) || r.index < run.lastActual
+      : reportedBeyond(scheduledMin);
     stops.push({
       r,
       scheduledMin,
@@ -279,14 +289,15 @@ export function computeJourneyStatus(j: JourneyInput, darwin: DarwinRunData | nu
  */
 function positionOf(
   run: DarwinRun,
-  stops: { r: Resolved | null; crs: string }[],
+  stops: { r: Resolved | null; crs: string; scheduledMin: number }[],
   runDate: string,
   ctx: ComputeContext,
 ): z.input<typeof TrainPosition> | null {
-  const from = stops[0]!.r;
-  const to = stops.at(-1)!.r;
-  if (!from || !to) return null;
-  const window = run.locations.filter((r) => r.index >= from.index && r.index <= to.index);
+  // My part of the run; where Darwin lacks my boarding or destination call (a feed gap), by planned time.
+  const from = stops[0]!.r?.index ?? run.locations.find((r) => r.at >= stops[0]!.scheduledMin)?.index;
+  const to = stops.at(-1)!.r?.index ?? run.locations.findLast((r) => r.at <= stops.at(-1)!.scheduledMin)?.index;
+  if (from === undefined || to === undefined) return null;
+  const window = run.locations.filter((r) => r.index >= from && r.index <= to);
   const reported = window.filter(hasActual).at(-1);
   if (!reported) return null;
   const next = window.find((r) => r.index > reported.index && !r.loc.can);

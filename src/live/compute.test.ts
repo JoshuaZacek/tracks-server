@@ -110,6 +110,42 @@ describe('computeJourneyStatus', () => {
     });
   });
 
+  /** Darwin data that starts mid-journey (the feed was down when the train left, longer than Kafka keeps messages). */
+  const afterGap = (over: Record<string, Partial<DarwinLocation>>, from: string): DarwinRunData => {
+    const d = darwin(over);
+    return { ...d, locations: d.locations.slice(d.locations.findIndex((l) => l.tpl === from)) };
+  };
+
+  it('is departed when later stops have actuals even though the departure itself was never received', () => {
+    const s = computeJourneyStatus(
+      journey,
+      afterGap({ PBRO: { arr: { at: '17:46' }, dep: { at: '17:49' } }, YORK: { arr: { et: '19:03' }, plat: { number: '5', confirmed: true, suppressed: false } } }, 'PBRO'),
+      ctx('2026-11-03T18:10:00Z'),
+    );
+    expect(s.state).toBe('departed');
+    // Not invented: the departure time stays unknown.
+    expect(s.service).toMatchObject({ actualDeparture: null, expectedDeparture: null });
+    expect(s.progress).toMatchObject({ lastPassedIndex: 1, nextIndex: 2, arrived: false });
+    expect(s.progress!.stops.map((x) => x.passed)).toEqual([true, true, false]);
+    expect(s.position).toMatchObject({ last: { tiploc: 'PBRO', event: 'departure' }, next: { tiploc: 'YORK' }, legFrom: 'PBO', legTo: 'YRK' });
+  });
+
+  it('is departed from a passing-point report alone, and arrived when the destination reports', () => {
+    const passing = computeJourneyStatus(journey, afterGap({ HLWYSJ: { pass: { at: '17:08' } } }, 'HLWYSJ'), ctx('2026-11-03T17:10:00Z'));
+    expect(passing.state).toBe('departed');
+    expect(passing.position).toMatchObject({ last: { tiploc: 'HLWYSJ', event: 'pass' }, legFrom: 'KGX', legTo: 'PBO' });
+
+    const arrived = computeJourneyStatus(journey, afterGap({ YORK: { arr: { at: '19:02' } } }, 'YORK'), ctx('2026-11-03T19:05:00Z'));
+    expect(arrived.state).toBe('arrived');
+    expect(arrived.progress!.stops.at(-1)).toMatchObject({ actual: '2026-11-03T19:02:00+00:00', passed: true });
+  });
+
+  it('is still live when the only reports are from before my boarding station', () => {
+    const fromPbo: JourneyInput = { ...journey, fromIndex: 1, toIndex: 2 };
+    const s = computeJourneyStatus(fromPbo, afterGap({ HLWYSJ: { pass: { at: '17:08' } } }, 'HLWYSJ'), ctx('2026-11-03T17:10:00Z'));
+    expect(s.state).toBe('live');
+  });
+
   it('gives position locations a CRS only when it is a real station (not a pseudo code like XHO)', () => {
     const s = computeJourneyStatus(
       journey,
