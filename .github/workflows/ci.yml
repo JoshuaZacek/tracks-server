@@ -1,0 +1,93 @@
+# Checks every push and pull request; deploys `main` to the server once the checks pass.
+#
+# Deploying runs deploy/deploy.sh over SSH: it copies the code to the server, builds the image
+# there and restarts the stack (migrations first). The image never goes to a registry, so there
+# is no registry storage or login on the server, and the server's .env never leaves the server.
+#
+# Repository secrets (Settings → Secrets and variables → Actions), see docs/deploy.md:
+#   DEPLOY_HOST         server address (IP or name)
+#   DEPLOY_USER         SSH user on the server (in the docker group)
+#   DEPLOY_SSH_KEY      private key of a key pair made just for deploys
+#   DEPLOY_KNOWN_HOSTS  output of `ssh-keyscan <server>` (pins the server's host key)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Typecheck, lint, OpenAPI, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/tracks
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/tracks_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  deploy:
+    name: Deploy to production
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://tracks-api.joshuazacek.com/v1/status
+    # One deploy at a time; a newer push waits rather than interrupting one in progress.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host *\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  ServerAliveInterval 30\n' > ~/.ssh/config
+
+      - name: Deploy
+        run: deploy/deploy.sh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
+
+      - name: Check the API answers over HTTPS
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 5 https://tracks-api.joshuazacek.com/health; then echo; exit 0; fi
+            sleep 5
+          done
+          echo "The API did not answer within 150 s" >&2
+          exit 1
+
+      - name: Report live-data status
+        if: always()
+        run: curl -fsS --max-time 10 https://tracks-api.joshuazacek.com/v1/status || true

@@ -75,16 +75,44 @@ APNS_BUNDLE_ID=com.joshuazacek.TrainTracker
 > **Only one Darwin consumer per group.** The Darwin consumer group is tied to the RDM subscription. Stop the worker on the
 > Mac before starting the one on the server: two consumers in the same group take turns and share one committed position.
 
-## 4. Deploy
+## 4. Deploy with GitHub Actions
 
-From the repository on the Mac:
+`.github/workflows/ci.yml` runs the checks (typecheck, lint, OpenAPI, the tests against a Postgres container) on every
+push and pull request. On a push to `main` that passes, it deploys with `deploy/deploy.sh`: it copies the code over SSH,
+builds the image on the server and restarts the stack (migrations first). A failed build leaves the running version
+alone. The job then waits for `https://tracks-api.joshuazacek.com/health`. You can also start it by hand under
+**Actions → CI → Run workflow**.
 
-```sh
-deploy/deploy.sh user@server           # copies the code, builds on the server, migrates, (re)starts
-```
+### One-time setup
 
-Run the same command for every update. It sends only what changed, and leaves the server's `.env`, `secrets/` and
-`backups/` alone. Each restart is graceful: the API drains its requests, and the worker commits its Darwin position.
+1. **A deploy user on the server**, allowed to run Docker. Membership of the `docker` group is effectively root, so
+   keep this key for deploys only.
+   ```sh
+   sudo adduser --disabled-password --gecos "" deploy
+   sudo usermod -aG docker deploy
+   sudo apt-get install -y rsync
+   ```
+2. **A key pair just for deploys**, made on the Mac. The private half goes to GitHub, the public half to the server.
+   ```sh
+   ssh-keygen -t ed25519 -N "" -C "tracks GitHub Actions deploy" -f ~/.ssh/tracks_deploy
+   ssh-copy-id -i ~/.ssh/tracks_deploy.pub deploy@<server-ip>   # or append it to ~deploy/.ssh/authorized_keys
+   ```
+3. **The `.env` from step 3**, at `/home/deploy/tracks-server/.env`, owned by `deploy`, `chmod 600`.
+4. **Repository secrets**: in GitHub under Settings → Secrets and variables → Actions, or with the `gh` CLI:
+   ```sh
+   gh secret set DEPLOY_HOST --body "<server-ip>"
+   gh secret set DEPLOY_USER --body "deploy"
+   gh secret set DEPLOY_SSH_KEY < ~/.ssh/tracks_deploy
+   ssh-keyscan <server-ip> | gh secret set DEPLOY_KNOWN_HOSTS
+   ```
+   `DEPLOY_KNOWN_HOSTS` pins the server's host key, so the workflow refuses to talk to anything else at that address.
+5. Optional: under Settings → Environments → `production`, add yourself as a required reviewer to approve each deploy.
+
+### By hand
+
+The same script works from the Mac with your own SSH access: `deploy/deploy.sh deploy@<server-ip>`. It sends only what
+changed, and leaves the server's `.env`, `secrets/` and `backups/` alone. Each restart is graceful: the API drains its
+requests, and the worker commits its Darwin position.
 
 ## 5. First start
 
