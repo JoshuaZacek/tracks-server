@@ -1,0 +1,171 @@
+{
+  "capturedAt": "2026-10-05T17:42:26.054Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api1.raildata.org.uk/1010-service-details/LDBWS/api/20220120/GetServiceDetails/9388583YORK____"
+  },
+  "status": 200,
+  "headers": {
+    "alt-svc": "h3=\":443\"; ma=2592000",
+    "cache-control": "public,no-cache",
+    "content-length": "2730",
+    "content-security-policy": "default-src 'self' blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk; script-src 'self' data: blob: 'nonce-rdmGTMDexam' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com; style-src 'unsafe-inline' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk 'self'; img-src 'self' data: blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://*.stripe.com; font-src 'self' data: *.raildata.org.uk *.gstatic.com; connect-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://api.stripe.com; frame-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com https://hooks.stripe.com https://stripe-data-exports.s3.amazonaws.com;",
+    "content-type": "application/json; charset=utf-8",
+    "date": "Mon, 05 Oct 2026 17:42:26 GMT",
+    "pragma": "no-cache",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "via": "1.1 google",
+    "x-aspnet-version": "4.0.30319",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "SAMEORIGIN",
+    "x-powered-by": "ASP.NET",
+    "x-request-id": "4c87c7b4-159e-4200-9f52-b78e5d8c613e"
+  },
+  "body": {
+    "previousCallingPoints": [
+      {
+        "callingPoint": [
+          {
+            "locationName": "Liverpool Lime Street",
+            "crs": "LIV",
+            "st": "16:24",
+            "at": "On time",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          },
+          {
+            "locationName": "Newton-le-Willows",
+            "crs": "NLW",
+            "st": "16:41",
+            "at": "16:43",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          },
+          {
+            "locationName": "Manchester Victoria",
+            "crs": "MCV",
+            "st": "17:00",
+            "at": "17:07",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          },
+          {
+            "locationName": "Huddersfield",
+            "crs": "HUD",
+            "st": "17:30",
+            "at": "18:12",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          },
+          {
+            "locationName": "Leeds",
+            "crs": "LDS",
+            "st": "17:52",
+            "at": "18:33",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          }
+        ],
+        "serviceType": "train",
+        "serviceChangeRequired": false,
+        "assocIsCancelled": false
+      }
+    ],
+    "subsequentCallingPoints": [
+      {
+        "callingPoint": [
+          {
+            "locationName": "Darlington",
+            "crs": "DAR",
+            "st": "18:49",
+            "et": "19:21",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          },
+          {
+            "locationName": "Durham",
+            "crs": "DHM",
+            "st": "19:06",
+            "et": "19:38",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          },
+          {
+            "locationName": "Chester-le-Street",
+            "crs": "CLS",
+            "st": "19:13",
+            "et": "19:44",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          },
+          {
+            "locationName": "Newcastle",
+            "crs": "NCL",
+            "st": "19:24",
+            "et": "19:54",
+            "isCancelled": false,
+            "length": 5,
+            "detachFront": false,
+            "delayReason": "This service has been delayed by animals on the railway",
+            "affectedByDiversion": false,
+            "rerouteDelay": 0
+          }
+        ],
+        "serviceType": "train",
+        "serviceChangeRequired": false,
+        "assocIsCancelled": false
+      }
+    ],
+    "generatedAt": "2026-10-05T18:42:26.0007024+01:00",
+    "serviceType": "train",
+    "locationName": "York",
+    "crs": "YRK",
+    "operator": "TransPennine Express",
+    "operatorCode": "TP",
+    "isCancelled": false,
+    "delayReason": "This service has been delayed by animals on the railway",
+    "length": 5,
+    "detachFront": false,
+    "isReverseFormation": false,
+    "platform": "TBC",
+    "sta": "18:21",
+    "eta": "18:54",
+    "std": "18:22",
+    "etd": "18:55",
+    "Xmlns": {
+      "Count": 8
+    }
+  }
+}

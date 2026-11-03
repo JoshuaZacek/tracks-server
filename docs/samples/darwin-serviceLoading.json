@@ -1,0 +1,72 @@
+[
+  {
+    "rid": "202611038002548",
+    "tpl": "STFD",
+    "wtd": "05:58",
+    "ptd": "05:58",
+    "loadingPercentage": "5"
+  },
+  {
+    "rid": "202611038002548",
+    "tpl": "HACKNYW",
+    "wta": "06:01",
+    "wtd": "06:01:30",
+    "pta": "06:01",
+    "ptd": "06:01",
+    "loadingPercentage": "6"
+  },
+  {
+    "rid": "202611038002548",
+    "tpl": "HOMRTON",
+    "wta": "06:03:30",
+    "wtd": "06:04",
+    "pta": "06:04",
+    "ptd": "06:04",
+    "loadingPercentage": "7"
+  },
+  {
+    "rid": "202611038002548",
+    "tpl": "HACKNYC",
+    "wta": "06:05:30",
+    "wtd": "06:06:30",
+    "pta": "06:06",
+    "ptd": "06:06",
+    "loadingPercentage": "7"
+  },
+  {
+    "rid": "202611038002548",
+    "tpl": "DALSKLD",
+    "wta": "06:08:30",
+    "wtd": "06:09:30",
+    "pta": "06:09",
+    "ptd": "06:09",
+    "loadingPercentage": "8"
+  },
+  {
+    "rid": "202611038002548",
+    "tpl": "CNNB",
+    "wta": "06:11",
+    "wtd": "06:11:30",
+    "pta": "06:11",
+    "ptd": "06:11",
+    "loadingPercentage": "8"
+  },
+  {
+    "rid": "202611038002548",
+    "tpl": "HIGHBYA",
+    "wta": "06:13",
+    "wtd": "06:15:30",
+    "pta": "06:15",
+    "ptd": "06:15",
+    "loadingPercentage": "8"
+  },
+  {
+    "rid": "202611038002548",
+    "tpl": "CLDNNRB",
+    "wta": "06:16:30",
+    "wtd": "06:17",
+    "pta": "06:17",
+    "ptd": "06:17",
+    "loadingPercentage": "9"
+  }
+]

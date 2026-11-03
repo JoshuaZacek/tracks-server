@@ -1,0 +1,20 @@
+{
+  "request": {
+    "url": "https://api1.raildata.org.uk/1010-knowlegebase-stations-xml-feed1_1/4.0/stations.xml"
+  },
+  "status": 500,
+  "headers": {
+    "alt-svc": "h3=\":443\"; ma=2592000",
+    "content-length": "197",
+    "content-security-policy": "default-src 'self' blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk; script-src 'self' data: blob: 'nonce-rdmGTMDexam' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com; style-src 'unsafe-inline' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk 'self'; img-src 'self' data: blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://*.stripe.com; font-src 'self' data: *.raildata.org.uk *.gstatic.com; connect-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://api.stripe.com; frame-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com https://hooks.stripe.com https://stripe-data-exports.s3.amazonaws.com;",
+    "content-type": "application/xml",
+    "date": "Mon, 05 Oct 2026 17:42:26 GMT",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "via": "1.1 google",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "SAMEORIGIN",
+    "x-request-id": "bc244f48-fba0-4959-b755-fe4c3342a95b"
+  },
+  "bodyExcerpt": "<?xml version='1.0' encoding='UTF-8'?><fault><faultstring>Unable to route the message to a Target Endpoint</faultstring><detail><errorcode>messaging.runtime.RouteFailed</errorcode></detail></fault>"
+}

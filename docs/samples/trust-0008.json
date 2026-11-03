@@ -1,0 +1,21 @@
+[
+  {
+    "header": {
+      "msg_type": "0008",
+      "msg_queue_timestamp": "1791228113000",
+      "source_system_id": "TRUST",
+      "original_data_source": "TOPS",
+      "user_id": "#QHP0050",
+      "source_dev_id": "VLYT"
+    },
+    "body": {
+      "train_id": "872N59MX05",
+      "event_timestamp": "1791231660000",
+      "loc_stanox": "72277",
+      "dep_timestamp": "1791226920000",
+      "original_loc_stanox": "72275",
+      "original_loc_timestamp": "1791226920000",
+      "train_service_code": "22214000"
+    }
+  }
+]

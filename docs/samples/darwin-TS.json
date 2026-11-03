@@ -1,0 +1,281 @@
+[
+  {
+    "rid": "202611036710190",
+    "uid": "C10190",
+    "ssd": "2026-11-03",
+    "Location": {
+      "tpl": "NEWSGAT",
+      "wta": "01:55",
+      "wtd": "01:55:30",
+      "pta": "01:55",
+      "ptd": "01:55",
+      "arr": {
+        "at": "01:54",
+        "atClass": "Automatic",
+        "src": "TD"
+      },
+      "dep": {
+        "at": "01:55",
+        "atClass": "Automatic",
+        "src": "TD"
+      },
+      "plat": {
+        "platsrc": "A",
+        "conf": "true",
+        "": "4"
+      },
+      "length": "6"
+    }
+  },
+  {
+    "rid": "202611027114947",
+    "uid": "G14947",
+    "ssd": "2026-11-02",
+    "LateReason": "895",
+    "Location": [
+      {
+        "tpl": "CTSARTJ",
+        "wtp": "01:56",
+        "pass": {
+          "at": "01:56",
+          "atClass": "Automatic",
+          "src": "TRUST",
+          "srcInst": "Auto"
+        },
+        "length": "5"
+      },
+      {
+        "tpl": "NEATH",
+        "wta": "01:58",
+        "wtd": "01:59:30",
+        "pta": "01:58",
+        "ptd": "01:59",
+        "arr": {
+          "et": "01:58",
+          "src": "Darwin"
+        },
+        "dep": {
+          "et": "01:59",
+          "src": "Darwin"
+        },
+        "plat": {
+          "platsrc": "A",
+          "conf": "true",
+          "": "1"
+        },
+        "length": "5"
+      },
+      {
+        "tpl": "SKEWEN",
+        "wtp": "02:02",
+        "pass": {
+          "et": "02:01",
+          "src": "Darwin"
+        },
+        "plat": {
+          "platsup": "true",
+          "cisPlatsup": "true",
+          "platsrc": "A",
+          "conf": "true",
+          "": "1"
+        },
+        "length": "5"
+      },
+      {
+        "tpl": "LLNSMLT",
+        "wtp": "02:04",
+        "pass": {
+          "et": "02:03",
+          "src": "Darwin"
+        },
+        "plat": {
+          "platsup": "true",
+          "cisPlatsup": "true",
+          "platsrc": "A",
+          "conf": "true",
+          "": "1"
+        },
+        "length": "5"
+      },
+      {
+        "tpl": "SWANSLE",
+        "wtp": "02:09",
+        "pass": {
+          "et": "02:07",
+          "src": "Darwin"
+        },
+        "length": "5"
+      },
+      {
+        "tpl": "SWANSEA",
+        "wta": "02:11",
+        "pta": "02:11",
+        "arr": {
+          "et": "02:11",
+          "wet": "02:09",
+          "src": "Darwin"
+        },
+        "plat": "4",
+        "length": "5"
+      }
+    ]
+  },
+  {
+    "rid": "202611038652274",
+    "uid": "V52274",
+    "ssd": "2026-11-03",
+    "LateReason": "547",
+    "Location": {
+      "tpl": "FLINT",
+      "wta": "01:04:30",
+      "wtd": "01:05:30",
+      "pta": "01:05",
+      "ptd": "01:05",
+      "arr": {
+        "et": "01:57",
+        "src": "Darwin"
+      },
+      "dep": {
+        "et": "01:57",
+        "src": "Darwin"
+      },
+      "plat": {
+        "platsrc": "A",
+        "conf": "true",
+        "": "2"
+      },
+      "length": "3"
+    }
+  },
+  {
+    "rid": "202611036725045",
+    "uid": "C25045",
+    "ssd": "2026-11-03",
+    "Location": [
+      {
+        "tpl": "EDIDBRY",
+        "wtp": "01:55",
+        "pass": {
+          "at": "01:56",
+          "atClass": "Automatic",
+          "src": "TD"
+        },
+        "plat": {
+          "platsup": "true",
+          "platsrc": "M",
+          "": "1"
+        },
+        "length": "3"
+      },
+      {
+        "tpl": "SLDLJN",
+        "wtp": "01:59",
+        "pass": {
+          "et": "02:00",
+          "src": "Darwin"
+        },
+        "length": "3"
+      },
+      {
+        "tpl": "ARDWCKJ",
+        "wtp": "02:01",
+        "pass": {
+          "et": "02:02",
+          "src": "Darwin"
+        },
+        "length": "3"
+      },
+      {
+        "tpl": "MNCRPIC",
+        "wta": "02:04",
+        "pta": "02:04",
+        "arr": {
+          "et": "02:05",
+          "src": "Darwin"
+        },
+        "plat": "10",
+        "length": "3"
+      }
+    ]
+  },
+  {
+    "rid": "202611036740133",
+    "uid": "C40133",
+    "ssd": "2026-11-03",
+    "Location": [
+      {
+        "tpl": "ALEXNDP",
+        "wta": "01:45:30",
+        "wtd": "01:46",
+        "arr": {
+          "at": "01:56",
+          "atClass": "Automatic",
+          "src": "TD"
+        },
+        "dep": {
+          "et": "01:56",
+          "src": "Darwin"
+        },
+        "plat": {
+          "platsup": "true",
+          "platsrc": "A",
+          "conf": "true",
+          "": "1"
+        }
+      },
+      {
+        "tpl": "HRNSYMD",
+        "wta": "01:51",
+        "arr": {
+          "et": "02:01",
+          "src": "Darwin"
+        }
+      }
+    ]
+  },
+  {
+    "rid": "202611038090876",
+    "uid": "P90876",
+    "ssd": "2026-11-03",
+    "Location": {
+      "tpl": "GRVPCSD",
+      "wta": "01:01",
+      "arr": {
+        "et": "01:56",
+        "delayed": "true",
+        "src": "Darwin"
+      },
+      "length": "4"
+    }
+  },
+  {
+    "rid": "202611027450002",
+    "uid": "J50002",
+    "ssd": "2026-11-02",
+    "Location": {
+      "tpl": "GRVPCSD",
+      "wta": "00:06",
+      "arr": {
+        "et": "01:56",
+        "delayed": "true",
+        "src": "Darwin"
+      },
+      "length": "8"
+    }
+  },
+  {
+    "rid": "202611037444395",
+    "uid": "J44395",
+    "ssd": "2026-11-03",
+    "Location": {
+      "tpl": "GRVPCSD",
+      "wta": "01:52",
+      "arr": {
+        "et": "01:56",
+        "delayed": "true",
+        "src": "Darwin"
+      },
+      "length": "10"
+    }
+  }
+]

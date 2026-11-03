@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-11-03T01:59:11.450Z",
+  "seconds": 181,
+  "messages": 1118,
+  "messagesPerSecond": {
+    "mean": 6.2,
+    "p95": 33,
+    "max": 115
+  },
+  "bytes": {
+    "total": 1869713,
+    "meanPerMessage": 1672,
+    "max": 17252
+  },
+  "kafkaTimestampLagMs": {
+    "median": 258,
+    "max": 398
+  },
+  "unparsedMessages": 281,
+  "elementCounts": {
+    "TS": 678,
+    "schedule": 143,
+    "serviceLoading": 107,
+    "association": 40,
+    "deactivated": 28
+  },
+  "firstMessageAt": "2026-11-03T01:56:11.130Z",
+  "lastMessageAt": "2026-11-03T01:59:09.229Z",
+  "topicOffsets": {
+    "partitions": 1,
+    "latest": [
+      {
+        "partition": 0,
+        "offset": "442482424",
+        "high": "442482424",
+        "low": "442425141"
+      }
+    ],
+    "atOneDayAgo": [
+      {
+        "partition": 0,
+        "offset": "442425141"
+      }
+    ]
+  }
+}

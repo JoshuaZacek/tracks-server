@@ -1,0 +1,75 @@
+[
+  {
+    "header": {
+      "msg_type": "0002",
+      "msg_queue_timestamp": "1791228164000",
+      "source_system_id": "TRUST",
+      "original_data_source": "SDR"
+    },
+    "body": {
+      "train_id": "462H63MY05",
+      "division_code": "21",
+      "toc_id": "21",
+      "loc_stanox": "47221",
+      "canx_timestamp": "1791231720000",
+      "dep_timestamp": "1791231480000",
+      "canx_type": "EN ROUTE",
+      "canx_reason_code": "XC",
+      "train_service_code": "21913000"
+    }
+  },
+  {
+    "header": {
+      "msg_type": "0002",
+      "msg_queue_timestamp": "1791228177000",
+      "source_system_id": "TRUST"
+    },
+    "body": {
+      "train_id": "545Y23M705",
+      "division_code": "61",
+      "toc_id": "61",
+      "loc_stanox": "54311",
+      "canx_timestamp": "1791231720000",
+      "dep_timestamp": "1791235320000",
+      "canx_type": "ON CALL",
+      "canx_reason_code": "PD",
+      "train_service_code": "21704001"
+    }
+  },
+  {
+    "header": {
+      "msg_type": "0002",
+      "msg_queue_timestamp": "1791228177000",
+      "source_system_id": "TRUST"
+    },
+    "body": {
+      "train_id": "835L84M705",
+      "division_code": "84",
+      "toc_id": "84",
+      "loc_stanox": "83411",
+      "canx_timestamp": "1791231720000",
+      "dep_timestamp": "1791235320000",
+      "canx_type": "ON CALL",
+      "canx_reason_code": "PD",
+      "train_service_code": "24676004"
+    }
+  },
+  {
+    "header": {
+      "msg_type": "0002",
+      "msg_queue_timestamp": "1791228186000",
+      "source_system_id": "TRUST"
+    },
+    "body": {
+      "train_id": "522R38M705",
+      "division_code": "79",
+      "toc_id": "79",
+      "loc_stanox": "52711",
+      "canx_timestamp": "1791231780000",
+      "dep_timestamp": "1791235380000",
+      "canx_type": "ON CALL",
+      "canx_reason_code": "PD",
+      "train_service_code": "27936004"
+    }
+  }
+]

@@ -1,0 +1,21 @@
+[
+  {
+    "header": {
+      "msg_type": "0005",
+      "msg_queue_timestamp": "1791228170000",
+      "source_system_id": "TRUST",
+      "original_data_source": "TRUST DA",
+      "user_id": "#QHP0050",
+      "source_dev_id": "LYJ8"
+    },
+    "body": {
+      "train_id": "872N59MX05",
+      "reinstatement_timestamp": "1791231720000",
+      "loc_stanox": "72416",
+      "dep_timestamp": "1791227400000",
+      "train_service_code": "22214000",
+      "division_code": "30",
+      "toc_id": "30"
+    }
+  }
+]

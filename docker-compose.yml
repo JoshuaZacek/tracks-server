@@ -1,0 +1,64 @@
+# Local or single-host deployment: Postgres, a one-shot migration, the API and the worker.
+# Production adds Caddy for TLS in front of `api` (Phase 7).
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: tracks
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tracks}
+      POSTGRES_DB: tracks
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tracks -d tracks']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build: .
+    command: ['node', 'scripts/migrate.ts']
+    environment: &env
+      DATABASE_URL: postgres://tracks:${POSTGRES_PASSWORD:-tracks}@postgres:5432/tracks
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      DATA_DIR: /data
+      SCHEDULE_REFRESH_TIME: ${SCHEDULE_REFRESH_TIME:-04:00}
+      RDM_AUTH_HEADER: ${RDM_AUTH_HEADER:-x-apikey}
+      KB_STATIONS_URL: ${KB_STATIONS_URL:-}
+      KB_STATIONS_API_KEY: ${KB_STATIONS_API_KEY:-}
+      NWR_SCHEDULE_URL: ${NWR_SCHEDULE_URL:-}
+      NWR_SCHEDULE_API_KEY: ${NWR_SCHEDULE_API_KEY:-}
+      NWR_SCHEDULE_USERNAME: ${NWR_SCHEDULE_USERNAME:-}
+      NWR_SCHEDULE_PASSWORD: ${NWR_SCHEDULE_PASSWORD:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+
+  api:
+    build: .
+    environment:
+      <<: *env
+      PORT: 3000
+    ports:
+      - '${API_PORT:-3000}:3000'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ['node', 'src/worker.ts']
+    environment: *env
+    # Put CIF_ALL_FULL_DAILY_toc-full.json.gz here (or set NWR_SCHEDULE_URL); the worker imports it.
+    volumes:
+      - ./data:/data
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Runtime data (schedule downloads, OS Open Names zip)
+data/

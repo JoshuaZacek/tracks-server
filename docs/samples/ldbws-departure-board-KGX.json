@@ -1,0 +1,501 @@
+{
+  "capturedAt": "2026-10-05T17:42:25.701Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard/KGX?numRows=15"
+  },
+  "status": 200,
+  "headers": {
+    "alt-svc": "h3=\":443\"; ma=2592000",
+    "cache-control": "public,no-cache",
+    "content-length": "7727",
+    "content-security-policy": "default-src 'self' blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk; script-src 'self' data: blob: 'nonce-rdmGTMDexam' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com; style-src 'unsafe-inline' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk 'self'; img-src 'self' data: blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://*.stripe.com; font-src 'self' data: *.raildata.org.uk *.gstatic.com; connect-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://api.stripe.com; frame-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com https://hooks.stripe.com https://stripe-data-exports.s3.amazonaws.com;",
+    "content-type": "application/json; charset=utf-8",
+    "date": "Mon, 05 Oct 2026 17:42:25 GMT",
+    "pragma": "no-cache",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "via": "1.1 google",
+    "x-aspnet-version": "4.0.30319",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "SAMEORIGIN",
+    "x-powered-by": "ASP.NET",
+    "x-request-id": "3e79eea4-1126-4309-984d-cf45beec8785"
+  },
+  "body": {
+    "trainServices": [
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Newcastle",
+            "crs": "NCL",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:42",
+        "etd": "On time",
+        "platform": "6",
+        "operator": "Lumo",
+        "operatorCode": "LD",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 0,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9389317KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Middlesbrough",
+            "crs": "MBR",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:45",
+        "etd": "On time",
+        "platform": "8",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 5,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9392119KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Kings Lynn",
+            "crs": "KLN",
+            "assocIsCancelled": false
+          }
+        ],
+        "rsid": "GN236700",
+        "std": "18:48",
+        "etd": "On time",
+        "platform": "2",
+        "operator": "Great Northern",
+        "operatorCode": "GN",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 4,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9391878KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Cambridge",
+            "crs": "CBG",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:54",
+        "etd": "On time",
+        "platform": "10",
+        "operator": "Great Northern",
+        "operatorCode": "GN",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 8,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9386313KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Letchworth Garden City",
+            "crs": "LET",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:57",
+        "etd": "Cancelled",
+        "operator": "Great Northern",
+        "operatorCode": "GN",
+        "isCircularRoute": false,
+        "isCancelled": true,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 0,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "cancelReason": "This service has been cancelled because of a shortage of train crew",
+        "serviceID": "9380869KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Edinburgh",
+            "crs": "EDB",
+            "assocIsCancelled": false
+          }
+        ],
+        "rsid": "GR666000",
+        "std": "19:00",
+        "etd": "19:10",
+        "platform": "7",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 9,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "delayReason": "This service has been delayed by a problem in the depot",
+        "serviceID": "9392147KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Beverley",
+            "crs": "BEV",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:04",
+        "etd": "On time",
+        "platform": "3",
+        "operator": "Hull Trains",
+        "operatorCode": "HT",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 0,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9403904KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Leeds",
+            "crs": "LDS",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:08",
+        "etd": "On time",
+        "platform": "5",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 9,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9387622KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Peterborough",
+            "crs": "PBO",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:12",
+        "etd": "On time",
+        "operator": "Great Northern",
+        "operatorCode": "GN",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 8,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9386449KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Cambridge",
+            "crs": "CBG",
+            "assocIsCancelled": false
+          }
+        ],
+        "rsid": "GN000200",
+        "std": "19:18",
+        "etd": "On time",
+        "operator": "Great Northern",
+        "operatorCode": "GN",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 8,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9409554KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Letchworth Garden City",
+            "crs": "LET",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:27",
+        "etd": "On time",
+        "operator": "Great Northern",
+        "operatorCode": "GN",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 8,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9380830KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Sunderland",
+            "crs": "SUN",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:27",
+        "etd": "On time",
+        "operator": "Grand Central",
+        "operatorCode": "GC",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 0,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9409621KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Edinburgh",
+            "crs": "EDB",
+            "assocIsCancelled": false
+          }
+        ],
+        "rsid": "GR668000",
+        "std": "19:30",
+        "etd": "On time",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 9,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9392148KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Newcastle",
+            "crs": "NCL",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:33",
+        "etd": "On time",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 5,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9378157KNGX____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Bradford Forster Square",
+            "crs": "BDQ",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:40",
+        "etd": "On time",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 9,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9378160KNGX____"
+      }
+    ],
+    "generatedAt": "2026-10-05T18:42:25.6442898+01:00",
+    "locationName": "London Kings Cross",
+    "crs": "KGX",
+    "filterType": "to",
+    "platformAvailable": true,
+    "areServicesAvailable": true,
+    "Xmlns": {
+      "Count": 8
+    }
+  }
+}

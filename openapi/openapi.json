@@ -1,0 +1,3716 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "tracks API",
+    "version": "0.1.0",
+    "description": "Backend for the tracks iOS app. Times are ISO 8601 with the UK offset and no fractional seconds; dates are YYYY-MM-DD (UK); station codes are upper-case CRS. Errors use the `Error` envelope with a stable `code`."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Device token from POST /v1/devices"
+      }
+    },
+    "schemas": {
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "validation_failed",
+                  "invalid_json",
+                  "payload_too_large",
+                  "unauthorized",
+                  "not_found",
+                  "station_not_found",
+                  "train_not_running",
+                  "journey_not_found",
+                  "station_not_on_route",
+                  "schedule_not_loaded",
+                  "rate_limited",
+                  "not_implemented",
+                  "service_unavailable",
+                  "internal"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ValidationIssue"
+                },
+                "description": "Present for `validation_failed`: one entry per invalid field"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ValidationIssue": {
+        "type": "object",
+        "properties": {
+          "in": {
+            "type": "string",
+            "enum": [
+              "params",
+              "query",
+              "body"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "example": "date"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "in",
+          "path",
+          "message"
+        ]
+      },
+      "Readiness": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "checks": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "enum": [
+                  "ok"
+                ]
+              },
+              "schedule": {
+                "type": "string",
+                "enum": [
+                  "ok"
+                ]
+              }
+            },
+            "required": [
+              "database",
+              "schedule"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ]
+      },
+      "ServerStatus": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "schedule": {
+            "type": "object",
+            "properties": {
+              "loaded": {
+                "type": "boolean"
+              },
+              "importedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "When this server imported the timetable",
+                "example": "2026-11-03T17:30:00+00:00"
+              },
+              "generatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "When Network Rail generated the extract",
+                "example": "2026-11-03T17:30:00+00:00"
+              }
+            },
+            "required": [
+              "loaded",
+              "importedAt",
+              "generatedAt"
+            ]
+          },
+          "stations": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "withCoordinates": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total",
+              "withCoordinates"
+            ]
+          },
+          "darwin": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "lastMessageAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+                "example": "2026-11-03T17:30:00+00:00"
+              },
+              "lagSeconds": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "lastMessageAt",
+              "lagSeconds"
+            ]
+          },
+          "trust": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "lastMessageAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+                "example": "2026-11-03T17:30:00+00:00"
+              }
+            },
+            "required": [
+              "enabled",
+              "lastMessageAt"
+            ]
+          },
+          "worker": {
+            "type": "object",
+            "properties": {
+              "lastHeartbeatAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+                "example": "2026-11-03T17:30:00+00:00"
+              },
+              "healthy": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "lastHeartbeatAt",
+              "healthy"
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "serverTime",
+          "schedule",
+          "stations",
+          "darwin",
+          "trust",
+          "worker"
+        ]
+      },
+      "PlacesDataset": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "attribution": {
+            "type": "string"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "places": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "source",
+          "attribution",
+          "generatedAt",
+          "types",
+          "places"
+        ]
+      },
+      "RegisterDeviceResponse": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "description": "Bearer token for every other call. Shown once: store it in the Keychain."
+          }
+        },
+        "required": [
+          "deviceId",
+          "token"
+        ]
+      },
+      "RegisterDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "example": "1.0 (42)"
+          },
+          "locale": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 35,
+            "example": "en_GB"
+          }
+        },
+        "required": [
+          "appVersion"
+        ]
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apnsTokenRegistered": {
+            "type": "boolean"
+          },
+          "apnsEnvironment": {
+            "$ref": "#/components/schemas/ApnsEnvironment"
+          },
+          "pushToStartTokenRegistered": {
+            "type": "boolean"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prefs": {
+            "$ref": "#/components/schemas/NotificationPrefs"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "deviceId",
+          "apnsTokenRegistered",
+          "apnsEnvironment",
+          "pushToStartTokenRegistered",
+          "appVersion",
+          "locale",
+          "prefs",
+          "createdAt"
+        ]
+      },
+      "ApnsEnvironment": {
+        "type": "string",
+        "enum": [
+          "sandbox",
+          "production"
+        ]
+      },
+      "NotificationPrefs": {
+        "type": "object",
+        "properties": {
+          "delays": {
+            "type": "boolean"
+          },
+          "platforms": {
+            "type": "boolean"
+          },
+          "cancellations": {
+            "type": "boolean"
+          },
+          "departure": {
+            "type": "boolean"
+          },
+          "arrival": {
+            "type": "boolean"
+          },
+          "delayThresholdMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "description": "Alert when the delay reaches this many minutes"
+          }
+        },
+        "required": [
+          "delays",
+          "platforms",
+          "cancellations",
+          "departure",
+          "arrival",
+          "delayThresholdMinutes"
+        ]
+      },
+      "UpdateDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "apnsToken": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-fA-F]{32,200}$",
+            "description": "Remote notification device token; null to unregister"
+          },
+          "apnsEnvironment": {
+            "type": "string",
+            "enum": [
+              "sandbox",
+              "production"
+            ],
+            "description": "sandbox for debug builds, production for TestFlight/App Store"
+          },
+          "pushToStartToken": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-fA-F]{32,200}$",
+            "description": "ActivityKit push-to-start token (iOS 17.2+); null to clear"
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32,
+            "example": "1.0 (42)"
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 2,
+            "maxLength": 35,
+            "example": "en_GB"
+          },
+          "prefs": {
+            "$ref": "#/components/schemas/NotificationPrefsUpdate"
+          }
+        }
+      },
+      "NotificationPrefsUpdate": {
+        "type": "object",
+        "properties": {
+          "delays": {
+            "type": "boolean"
+          },
+          "platforms": {
+            "type": "boolean"
+          },
+          "cancellations": {
+            "type": "boolean"
+          },
+          "departure": {
+            "type": "boolean"
+          },
+          "arrival": {
+            "type": "boolean"
+          },
+          "delayThresholdMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "description": "Alert when the delay reaches this many minutes"
+          }
+        }
+      },
+      "StationList": {
+        "type": "object",
+        "properties": {
+          "stations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Station"
+            }
+          }
+        },
+        "required": [
+          "stations"
+        ]
+      },
+      "Station": {
+        "type": "object",
+        "properties": {
+          "crs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "name": {
+            "type": "string",
+            "example": "London Kings Cross"
+          },
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "WGS84 latitude; null until Knowledgebase has located the station"
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "crs",
+          "name",
+          "lat",
+          "lon"
+        ]
+      },
+      "NearbyStationList": {
+        "type": "object",
+        "properties": {
+          "stations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NearbyStation"
+            }
+          }
+        },
+        "required": [
+          "stations"
+        ]
+      },
+      "NearbyStation": {
+        "type": "object",
+        "properties": {
+          "crs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "name": {
+            "type": "string",
+            "example": "London Kings Cross"
+          },
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "WGS84 latitude; null until Knowledgebase has located the station"
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "distanceMeters": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "crs",
+          "name",
+          "lat",
+          "lon",
+          "distanceMeters"
+        ]
+      },
+      "DeparturesResponse": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "example": "2026-11-03"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Station"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "departures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Departure"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` to get the next page; null when there are no more"
+          }
+        },
+        "required": [
+          "date",
+          "from",
+          "to",
+          "departures",
+          "nextCursor"
+        ]
+      },
+      "Departure": {
+        "type": "object",
+        "properties": {
+          "trainUid": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "Timetable train UID (CIF_train_uid)",
+            "example": "L12345"
+          },
+          "runDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Date the train started its run (the day before `date` for after-midnight calls)",
+            "example": "2026-11-03"
+          },
+          "headcode": {
+            "type": "string",
+            "example": "1S32"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/Operator"
+          },
+          "scheduledDeparture": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "bookedPlatform": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "destination": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "arrival": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DepartureArrival"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "live": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveDepartureInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "trainUid",
+          "runDate",
+          "headcode",
+          "operator",
+          "scheduledDeparture",
+          "bookedPlatform",
+          "destination",
+          "arrival",
+          "live"
+        ]
+      },
+      "Operator": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Two-character operator (ATOC) code",
+            "example": "GR"
+          },
+          "name": {
+            "type": "string",
+            "example": "LNER"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "DepartureArrival": {
+        "type": "object",
+        "properties": {
+          "station": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "scheduledArrival": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "station",
+          "scheduledArrival"
+        ]
+      },
+      "LiveDepartureInfo": {
+        "type": "object",
+        "properties": {
+          "expectedDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "delayMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isCancelled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expectedDeparture",
+          "actualDeparture",
+          "delayMinutes",
+          "platform",
+          "isCancelled"
+        ]
+      },
+      "Platform": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string",
+            "example": "4"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "live"
+            ],
+            "description": "booked: from the timetable; live: from Darwin"
+          },
+          "confirmed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "number",
+          "source",
+          "confirmed"
+        ]
+      },
+      "TrainDetails": {
+        "type": "object",
+        "properties": {
+          "trainUid": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "Timetable train UID (CIF_train_uid)",
+            "example": "L12345"
+          },
+          "runDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "example": "2026-11-03"
+          },
+          "headcode": {
+            "type": "string"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/Operator"
+          },
+          "callingPoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CallingPoint"
+            }
+          },
+          "route": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoutePoint"
+            }
+          }
+        },
+        "required": [
+          "trainUid",
+          "runDate",
+          "headcode",
+          "operator",
+          "callingPoints",
+          "route"
+        ]
+      },
+      "CallingPoint": {
+        "type": "object",
+        "properties": {
+          "crs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "scheduledArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Null at the origin",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "scheduledDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Null at the final stop",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "bookedPlatform": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "live": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallingPointLive"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "crs",
+          "name",
+          "lat",
+          "lon",
+          "scheduledArrival",
+          "scheduledDeparture",
+          "bookedPlatform",
+          "live"
+        ]
+      },
+      "CallingPointLive": {
+        "type": "object",
+        "properties": {
+          "expectedArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "expectedDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isCancelled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expectedArrival",
+          "expectedDeparture",
+          "actualArrival",
+          "actualDeparture",
+          "platform",
+          "isCancelled"
+        ]
+      },
+      "RoutePoint": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lon": {
+            "type": "number"
+          },
+          "leg": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "f": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "leg",
+          "f"
+        ]
+      },
+      "JourneyList": {
+        "type": "object",
+        "properties": {
+          "journeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JourneyListItem"
+            }
+          },
+          "nextPollSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "Soonest the list could change on its own (refresh then while open); null if only your own edits change it"
+          }
+        },
+        "required": [
+          "journeys",
+          "nextPollSeconds"
+        ]
+      },
+      "JourneyListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trainUid": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "Timetable train UID (CIF_train_uid)",
+            "example": "L12345"
+          },
+          "runDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "example": "2026-11-03"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "The date I depart from my boarding station",
+            "example": "2026-11-03"
+          },
+          "headcode": {
+            "type": "string"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/Operator"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "to": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "scheduledDeparture": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "scheduledArrival": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "bookedPlatform": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Timetabled platform at my boarding station"
+          },
+          "prefs": {
+            "$ref": "#/components/schemas/JourneyPrefs"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "live": {
+            "$ref": "#/components/schemas/LiveSummary"
+          }
+        },
+        "required": [
+          "id",
+          "trainUid",
+          "runDate",
+          "date",
+          "headcode",
+          "operator",
+          "from",
+          "to",
+          "scheduledDeparture",
+          "scheduledArrival",
+          "bookedPlatform",
+          "prefs",
+          "createdAt",
+          "archivedAt",
+          "live"
+        ]
+      },
+      "JourneyPrefs": {
+        "type": "object",
+        "properties": {
+          "delays": {
+            "type": "boolean"
+          },
+          "platforms": {
+            "type": "boolean"
+          },
+          "cancellations": {
+            "type": "boolean"
+          },
+          "departure": {
+            "type": "boolean"
+          },
+          "arrival": {
+            "type": "boolean"
+          },
+          "delayThresholdMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          }
+        }
+      },
+      "LiveSummary": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/LiveState"
+          },
+          "expectedDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "expectedArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "At my destination",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "At my destination",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "delayMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Live platform at my boarding station, when Darwin has one"
+          },
+          "isCancelled": {
+            "type": "boolean"
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "state",
+          "expectedDeparture",
+          "actualDeparture",
+          "expectedArrival",
+          "actualArrival",
+          "delayMinutes",
+          "platform",
+          "isCancelled",
+          "stale",
+          "checkedAt"
+        ]
+      },
+      "LiveState": {
+        "type": "string",
+        "enum": [
+          "scheduled",
+          "live",
+          "departed",
+          "arrived",
+          "cancelled",
+          "not_found"
+        ]
+      },
+      "Journey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trainUid": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "Timetable train UID (CIF_train_uid)",
+            "example": "L12345"
+          },
+          "runDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "example": "2026-11-03"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "The date I depart from my boarding station",
+            "example": "2026-11-03"
+          },
+          "headcode": {
+            "type": "string"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/Operator"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "to": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "scheduledDeparture": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "scheduledArrival": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "bookedPlatform": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Timetabled platform at my boarding station"
+          },
+          "prefs": {
+            "$ref": "#/components/schemas/JourneyPrefs"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "callingPoints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CallingPoint"
+            },
+            "description": "The train's full public calling pattern, snapshotted when saved"
+          },
+          "fromIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Index into callingPoints where I board"
+          },
+          "toIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Index where I get off"
+          },
+          "route": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoutePoint"
+            }
+          },
+          "live": {
+            "$ref": "#/components/schemas/LiveStatus"
+          }
+        },
+        "required": [
+          "id",
+          "trainUid",
+          "runDate",
+          "date",
+          "headcode",
+          "operator",
+          "from",
+          "to",
+          "scheduledDeparture",
+          "scheduledArrival",
+          "bookedPlatform",
+          "prefs",
+          "createdAt",
+          "archivedAt",
+          "callingPoints",
+          "fromIndex",
+          "toIndex",
+          "route",
+          "live"
+        ]
+      },
+      "LiveStatus": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/LiveState"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the server last updated this status",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "nextPollSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "When to refresh while the app is open; null = final"
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "True when the live feed has stopped and this is the last known data"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "service": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveService"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JourneyProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainPosition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "checkedAt",
+          "nextPollSeconds",
+          "stale",
+          "message",
+          "service",
+          "progress",
+          "position"
+        ]
+      },
+      "LiveService": {
+        "type": "object",
+        "properties": {
+          "rid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin's id for this run of the train"
+          },
+          "scheduledDeparture": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "expectedDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "delayMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Minutes late (actual or expected vs scheduled); null when unknown"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isCancelled": {
+            "type": "boolean"
+          },
+          "cancelReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "delayReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "rid",
+          "scheduledDeparture",
+          "expectedDeparture",
+          "actualDeparture",
+          "delayMinutes",
+          "platform",
+          "isCancelled",
+          "cancelReason",
+          "delayReason"
+        ]
+      },
+      "JourneyProgress": {
+        "type": "object",
+        "properties": {
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressStop"
+            },
+            "description": "My boarding station first, my destination last"
+          },
+          "lastPassedIndex": {
+            "type": "integer",
+            "description": "Index of the last stop called at; -1 before departure"
+          },
+          "nextIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Next stop; null once arrived"
+          },
+          "arrived": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stops",
+          "lastPassedIndex",
+          "nextIndex",
+          "arrived"
+        ]
+      },
+      "ProgressStop": {
+        "type": "object",
+        "properties": {
+          "crs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scheduled": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "expected": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actual": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "isCancelled": {
+            "type": "boolean"
+          },
+          "delayMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "crs",
+          "name",
+          "scheduled",
+          "expected",
+          "actual",
+          "passed",
+          "isCancelled",
+          "delayMinutes",
+          "platform"
+        ]
+      },
+      "TrainPosition": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "darwin",
+              "trust"
+            ]
+          },
+          "last": {
+            "$ref": "#/components/schemas/PositionReport"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PositionNext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legFrom": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Calling point at the start of the current leg",
+            "example": "KGX"
+          },
+          "legTo": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Calling point at the end of the current leg",
+            "example": "KGX"
+          }
+        },
+        "required": [
+          "source",
+          "last",
+          "next",
+          "legFrom",
+          "legTo"
+        ]
+      },
+      "PositionReport": {
+        "type": "object",
+        "properties": {
+          "tiploc": {
+            "type": "string"
+          },
+          "crs": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "arrival",
+              "departure",
+              "pass"
+            ]
+          }
+        },
+        "required": [
+          "tiploc",
+          "crs",
+          "name",
+          "lat",
+          "lon",
+          "time",
+          "event"
+        ]
+      },
+      "PositionNext": {
+        "type": "object",
+        "properties": {
+          "tiploc": {
+            "type": "string"
+          },
+          "crs": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "expectedTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "tiploc",
+          "crs",
+          "name",
+          "lat",
+          "lon",
+          "expectedTime"
+        ]
+      },
+      "CreateJourneyRequest": {
+        "type": "object",
+        "properties": {
+          "trainUid": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "Timetable train UID (CIF_train_uid)",
+            "example": "L12345"
+          },
+          "runDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "example": "2026-11-03"
+          },
+          "fromCrs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "toCrs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Where I get off; defaults to the train's final stop",
+            "example": "KGX"
+          }
+        },
+        "required": [
+          "trainUid",
+          "runDate",
+          "fromCrs"
+        ]
+      },
+      "UpdateJourneyRequest": {
+        "type": "object",
+        "properties": {
+          "prefs": {
+            "$ref": "#/components/schemas/JourneyPrefsUpdate"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "true moves the journey to past; false brings it back"
+          }
+        }
+      },
+      "JourneyPrefsUpdate": {
+        "type": "object",
+        "properties": {
+          "delays": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "platforms": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "cancellations": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "departure": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "arrival": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "delayThresholdMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 60
+          }
+        }
+      },
+      "RegisterLiveActivityRequest": {
+        "type": "object",
+        "properties": {
+          "pushToken": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{32,200}$"
+          }
+        },
+        "required": [
+          "pushToken"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Liveness: the process is up",
+        "tags": [
+          "System"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Alive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "ready",
+        "summary": "Readiness: dependencies reachable",
+        "description": "Database reachable and a timetable imported; otherwise 503.",
+        "tags": [
+          "System"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A data source is not ready (`schedule_not_loaded`, `service_unavailable`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/status": {
+      "get": {
+        "operationId": "getStatus",
+        "summary": "Data freshness and background worker health",
+        "description": "Darwin and TRUST figures are filled in by the phases that add those feeds.",
+        "tags": [
+          "System"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reference/places": {
+      "get": {
+        "operationId": "getPlaces",
+        "summary": "Place names for on-device nearest-town labels",
+        "description": "OS Open Names cities, towns, villages and suburbs. Download once and revalidate with `If-None-Match`. Each place is [name, lat×1e5, lon×1e5, typeIndex, (south, west, north, east)×1e5 for cities and towns]. Attribution: \"Contains OS data © Crown copyright and database right\".",
+        "tags": [
+          "Reference"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The place dataset (gzip-encoded when accepted; 304 when the ETag matches)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacesDataset"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices": {
+      "post": {
+        "operationId": "registerDevice",
+        "summary": "Register this app install",
+        "description": "Call once on first launch. Returns the bearer token for every other request; it is shown only once and the server keeps only a hash of it. Rate-limited per IP.",
+        "tags": [
+          "Devices"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterDeviceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices/me": {
+      "get": {
+        "operationId": "getDevice",
+        "summary": "This app install",
+        "tags": [
+          "Devices"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDevice",
+        "summary": "Update push tokens, app version, locale or notification preferences",
+        "description": "Only the fields sent are changed; `prefs` is merged into the current preferences.",
+        "tags": [
+          "Devices"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeviceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDevice",
+        "summary": "Delete this app install and all its data",
+        "description": "Removes the device, its journeys and Live Activity registrations. The token stops working immediately.",
+        "tags": [
+          "Devices"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stations": {
+      "get": {
+        "operationId": "searchStations",
+        "summary": "Search stations by name or CRS code",
+        "description": "Ranked: exact CRS, then name prefix, then word prefix, then contains.",
+        "tags": [
+          "Stations"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60,
+              "description": "Name or CRS code",
+              "example": "york"
+            },
+            "required": true,
+            "description": "Name or CRS code",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching stations, best first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stations/nearby": {
+      "get": {
+        "operationId": "nearbyStations",
+        "summary": "Stations nearest to a position",
+        "description": "The position is used for this lookup only and is not stored.",
+        "tags": [
+          "Stations"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": -90,
+              "maximum": 90
+            },
+            "required": false,
+            "name": "lat",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": -180,
+              "maximum": 180
+            },
+            "required": false,
+            "name": "lon",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 5
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nearest stations, closest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearbyStationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stations/{crs}": {
+      "get": {
+        "operationId": "getStation",
+        "summary": "One station",
+        "tags": [
+          "Stations"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{3}$",
+              "description": "Three-letter station (CRS) code",
+              "example": "KGX"
+            },
+            "required": true,
+            "description": "Three-letter station (CRS) code",
+            "name": "crs",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The station",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Station"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stations/{crs}/departures": {
+      "get": {
+        "operationId": "listDepartures",
+        "summary": "Timetabled departures from a station on a date",
+        "description": "Passenger trains leaving `crs` on `date`, including trains that started the previous day and call after midnight. Paged by `cursor` (`nextCursor` from the previous page). For today's trains each item carries a `live` overlay from Darwin (Phase 4; null until then). 503 `schedule_not_loaded` before the first timetable import.",
+        "tags": [
+          "Stations"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{3}$",
+              "description": "Three-letter station (CRS) code",
+              "example": "KGX"
+            },
+            "required": true,
+            "description": "Three-letter station (CRS) code",
+            "name": "crs",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Calendar date (YYYY-MM-DD), UK local",
+              "example": "2026-11-03"
+            },
+            "required": true,
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{3}$",
+              "description": "Only trains that call here afterwards",
+              "example": "KGX"
+            },
+            "required": false,
+            "description": "Only trains that call here afterwards",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "description": "Earliest departure (HH:MM, UK local)",
+              "example": "17:00"
+            },
+            "required": false,
+            "description": "Earliest departure (HH:MM, UK local)",
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 40
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of departures",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeparturesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A data source is not ready (`schedule_not_loaded`, `service_unavailable`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/trains/{uid}/{runDate}": {
+      "get": {
+        "operationId": "getTrain",
+        "summary": "A train run: calling points and route",
+        "description": "The timetable for one run of a train after short-term (STP) changes. 404 `train_not_running` when it is cancelled or not a passenger train that day. Calling points carry `live` data once Darwin has the run (Phase 4).",
+        "tags": [
+          "Trains"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{6}$",
+              "description": "Timetable train UID (CIF_train_uid)",
+              "example": "L12345"
+            },
+            "required": true,
+            "description": "Timetable train UID (CIF_train_uid)",
+            "name": "uid",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Calendar date (YYYY-MM-DD), UK local",
+              "example": "2026-11-03"
+            },
+            "required": true,
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "name": "runDate",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The train run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A data source is not ready (`schedule_not_loaded`, `service_unavailable`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys": {
+      "get": {
+        "operationId": "listJourneys",
+        "summary": "This device's saved journeys",
+        "description": "`past`: archived, arrived, or scheduled arrival gone by while the train is not running (a late train stays upcoming until it arrives); newest first. `upcoming`: everything else, soonest first. `nextPollSeconds` says when to refresh while the list is open.",
+        "tags": [
+          "Journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "past"
+              ],
+              "default": "upcoming"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100,
+              "description": "Most recent first for `past`"
+            },
+            "required": false,
+            "description": "Most recent first for `past`",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Journeys with a live summary each",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createJourney",
+        "summary": "Save a journey on a timetabled train",
+        "description": "Checks the train runs on `runDate` and calls at `fromCrs` then `toCrs`, snapshots its calling points and starts tracking. Returns 201 for a new journey, or 200 with the existing one (un-archived) if this device already saved the same trip. Past run dates are accepted while the timetable still covers them (they appear under `past`); otherwise 404 `train_not_running`. 422 `station_not_on_route` if the train does not pick up at `fromCrs` or set down at `toCrs` after it.",
+        "tags": [
+          "Journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJourneyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The saved journey (200 if it already existed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journey"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A data source is not ready (`schedule_not_loaded`, `service_unavailable`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}": {
+      "get": {
+        "operationId": "getJourney",
+        "summary": "A saved journey with its current live status",
+        "tags": [
+          "Journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The journey",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journey"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateJourney",
+        "summary": "Change notification overrides or archive a journey",
+        "tags": [
+          "Journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateJourneyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated journey",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Journey"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteJourney",
+        "summary": "Delete a journey; stops tracking and ends its Live Activity",
+        "tags": [
+          "Journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/live": {
+      "get": {
+        "operationId": "getJourneyLive",
+        "summary": "Just the live status of a journey",
+        "description": "Cheap to poll while the app is open: it reads stored state and never calls upstream. Respect `nextPollSeconds`. Until live tracking (Phase 4) this is the timetable view: state `scheduled`, no service/progress/position.",
+        "tags": [
+          "Journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/live-activity": {
+      "put": {
+        "operationId": "registerLiveActivity",
+        "summary": "Register the push token of a Live Activity the app started for this journey",
+        "tags": [
+          "Live Activities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterLiveActivityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Registered; the server will push updates to it"
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not implemented yet (`not_implemented`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "endLiveActivity",
+        "summary": "The user ended the Live Activity; stop pushing to it",
+        "tags": [
+          "Live Activities"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Stopped"
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not implemented yet (`not_implemented`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

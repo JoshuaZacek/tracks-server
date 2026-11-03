@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="utf-8"?>
+<StationV4.0 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:com="http://nationalrail.co.uk/xml/common" xmlns:add="http://www.govtalk.gov.uk/people/AddressAndPersonalDetails" xsi:schemaLocation="https://internal.nationalrail.co.uk/xml/XsdSchemas/External/Version4.0/nre-station-v4-0.xsd" xmlns="http://nationalrail.co.uk/xml/station">
+  <ChangeHistory>
+    <com:ChangedBy>NRE CMS Editor</com:ChangedBy>
+    <com:LastChangedDate>2026-10-01T11:06:50.651Z</com:LastChangedDate>
+  </ChangeHistory>
+  <CrsCode>YRK</CrsCode>
+  <AlternativeIdentifiers>
+    <NationalLocationCode>826300</NationalLocationCode>
+  </AlternativeIdentifiers>
+  <Name>York</Name>
+  <SixteenCharacterName>YORK.</SixteenCharacterName>
+  <Address>
+    <com:PostalAddress>
+      <add:A_5LineAddress>
+        <add:Line>York station</add:Line>
+        <add:Line>Station Road</add:Line>
+        <add:Line>York</add:Line>
+        <add:Line>North Yorkshire</add:Line>
+        <add:PostCode>YO24 1AB</add:PostCode>
+      </add:A_5LineAddress>
+    </com:PostalAddress>
+  </Address>
+  <Longitude>-1.093176915</Longitude>
+  <Latitude>53.95797924</Latitude>
+  <StationOperator>GR</StationOperator>
+  <Staffing>
+    <StaffingLevel>fullTime</StaffingLevel>
+    <ClosedCircuitTelevision>
+      <Available>true</Available>
+    </ClosedCircuitTelevision>
+  </Staffing>
+  <InformationSystems>
+    <InformationAvailableFromStaff>Yes - from information point</InformationAvailableFromStaff>
+    <InformationAvailableFromStaff>Yes - from ticket office</InformationAvailableFromStaff>
+    <InformationServicesOpen>
+      <com:DayAndTimeAvailability>
+        <com:DayTypes>
+          <com:MondayToFriday>true</com:MondayToFriday>
+        </com:DayTypes>
+        <com:OpeningHours>
+          <com:OpenPeriod>
+            <com:StartTime>00:00:00.000</com:StartTime>
+            <com:EndTime>23:59:00.000</com:EndTime>
+          </com:OpenPeriod>
+        </com:OpeningHours>
+      </com:DayAndTimeAvailability>
+      <com:DayAndTimeAvailability>
+        <com:DayTypes>
+          <com:Saturday>true</com:Saturday>
+        </com:DayTypes>
+        <com:OpeningHours>
+          <com:OpenPeriod>
+            <com:StartTime>00:00:00.000</com:StartTime>
+            <com:EndTime>23:59:00.000</com:EndTime>
+          </com:OpenPeriod>
+        </com:OpeningHours>
+      </com:DayAndTimeAvailability>
+      <com:DayAndTimeAvailability>
+        <com:DayTypes>
+          <com:Sunday>true</com:Sunday>
+        </com:DayTypes>
+        <com:OpeningHours>
+          <com:OpenPeriod>
+            <com:StartTime>00:00:00.000</com:StartTime>
+            <com:EndTime>23:59:00.000</com:EndTime>
+          </com:OpenPeriod>
+        </com:OpeningHours>
+      </com:DayAndTimeAvailability>
+    </InformationServicesOpen>
+    <CIS>DepartureScreens</CIS>
+    <CIS>ArrivalScreens</CIS>
+    <CIS>Announcements</CIS>
+    <CustomerHelpPoints>
+      <com:Available>false</com:Available>
+    </CustomerHelpPoints>
+  </InformationSystems>
+  <Fares>
+    <TicketOffice>
+      <com:Open>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:MondayToFriday>true</com:MondayToFriday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:OpenPeriod>
+              <com:StartTime>06:00:00.000</com:StartTime>
+              <com:EndTime>20:00:00.000</com:EndTime>
+            </com:OpenPeriod>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:Saturday>true</com:Saturday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:OpenPeriod>
+              <com:StartTime>06:00:00.000</com:StartTime>
+              <com:EndTime>20:00:00.000</com:EndTime>
+            </com:OpenPeriod>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:Sunday>true</com:Sunday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:OpenPeriod>
+              <com:StartTime>08:00:00.000</com:StartTime>
+              <com:EndTime>18:00:00.000</com:EndTime>
+            </com:OpenPeriod>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+      </com:Open>
+      <com:Location>
+        <com:Note><![CDATA[<p>On main concourse.</p>]]></com:Note>
+      </com:Location>
+    </TicketOffice>
+    <PrepurchaseCollection>
+      <TicketOffice>true</TicketOffice>
+      <TicketMachine>true</TicketMachine>
+    </PrepurchaseCollection>
+    <TicketMachine>
+      <Available>true</Available>
+    </TicketMachine>
+    <OystercardIssued>false</OystercardIssued>
+    <UseOystercard>false</UseOystercard>
+    <AlwaysShowOysterCardFields>false</AlwaysShowOysterCardFields>
+    <SmartcardIssued>true</SmartcardIssued>
+    <SmartcardTopup>
+      <TicketOffice>true</TicketOffice>
+      <TicketMachine>true</TicketMachine>
+    </SmartcardTopup>
+    <SmartcardValidator>false</SmartcardValidator>
+    <PenaltyFares>
+      <TrainOperator>GR</TrainOperator>
+    </PenaltyFares>
+  </Fares>
+  <PassengerServices>
+    <CustomerService>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>We welcome your feedback, suggestions and ideas to help us to make changes that can develop and grow our business.</p><p>This station has Secure Station Accreditation</p>]]></com:Note>
+      </com:Annotation>
+    </CustomerService>
+    <LeftLuggage>
+      <com:ContactDetails>
+        <com:Url>https://www.nationalrail.co.uk/</com:Url>
+      </com:ContactDetails>
+      <com:Available>false</com:Available>
+    </LeftLuggage>
+    <LostProperty>
+      <com:ContactDetails>
+        <com:PrimaryTelephoneNumber>
+          <com:TelNationalNumber>03457 225333</com:TelNationalNumber>
+        </com:PrimaryTelephoneNumber>
+        <com:Url>https://www.nationalrail.co.uk/</com:Url>
+      </com:ContactDetails>
+      <com:Open>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:MondayToFriday>true</com:MondayToFriday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:OpenPeriod>
+              <com:StartTime>09:00:00.000</com:StartTime>
+              <com:EndTime>16:00:00.000</com:EndTime>
+            </com:OpenPeriod>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+      </com:Open>
+    </LostProperty>
+  </PassengerServices>
+  <StationFacilities>
+    <SeatedArea>
+      <com:Available>true</com:Available>
+    </SeatedArea>
+    <WaitingRoom>
+      <com:Open>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:MondayToSunday>true</com:MondayToSunday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:OpenPeriod>
+              <com:StartTime>06:00:00.000</com:StartTime>
+              <com:EndTime>22:00:00.000</com:EndTime>
+            </com:OpenPeriod>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+      </com:Open>
+      <com:Location>
+        <com:Note><![CDATA[<p>This station has heated waiting rooms available. Seating is available at an accessible height in the waiting room and on platforms</p><p>Waiting Room opening hours are at all times that the station is open</p>]]></com:Note>
+      </com:Location>
+    </WaitingRoom>
+    <Trolleys>
+      <com:Available>true</com:Available>
+    </Trolleys>
+    <StationBuffet>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>Various coffee shops , food outlets, supermarkets and shops available for refreshments and shopping</p>]]></com:Note>
+      </com:Annotation>
+      <com:Available>true</com:Available>
+      <com:Location>
+        <com:Note><![CDATA[<p>Station concourse</p>]]></com:Note>
+      </com:Location>
+    </StationBuffet>
+    <Toilets>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>The Changing Places toilet is undergoing refurbishment works and is currently closed. Alternative accessible toilets are available. For a full list of Changing Places toilets, please visit: <a href="https://www.changing-places.org/" title="">changing-places.org</a></p>]]></com:Note>
+      </com:Annotation>
+      <com:Available>true</com:Available>
+      <com:Location>
+        <com:Note><![CDATA[<p>The Ladies toilets are located in the Main Concourse and in the Waiting Room between Platforms 7 and 9. The Gents toilet is adjacent to Platform 2 and between Platforms 8 and 9. The National key toilets are adjacent to Platform 2 and between Platforms 8 and 9; these toilets are operated by a RADAR key. A RADAR key is available from station staff. Toilet opening hours are at all times that the station is open.</p>]]></com:Note>
+      </com:Location>
+    </Toilets>
+    <BabyChange>
+      <com:Available>true</com:Available>
+    </BabyChange>
+    <Telephones>
+      <com:Exists>true</com:Exists>
+    </Telephones>
+    <WiFi>
+      <com:Annotation>
+        <com:Note><![CDATA[<p><a href="http://btwifi.com/find" title="">Find WiFi Hotspots around York station</a></p>]]></com:Note>
+      </com:Annotation>
+      <com:Available>true</com:Available>
+    </WiFi>
+    <PostBox>
+      <com:Available>true</com:Available>
+      <com:Location>
+        <com:Note><![CDATA[<p>Outside the station</p>]]></com:Note>
+      </com:Location>
+    </PostBox>
+    <AtmMachine>
+      <com:Available>true</com:Available>
+      <com:Location>
+        <com:Note><![CDATA[<p>Located on concourse</p>]]></com:Note>
+      </com:Location>
+    </AtmMachine>
+    <Shops>
+      <com:Available>true</com:Available>
+    </Shops>
+  </StationFacilities>
+  <Accessibility>
+    <Helpline>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>We want everyone to travel with confidence. That is why, if you are planning on travelling on national rail services, you can request an assistance booking in advance - now up to 2 hours before your journey is due to start, any time of the day. For more information about Passenger Assist and how to request an assistance booking via Passenger Assist, please <a href="https://www.nationalrail.co.uk/stations_destinations/passenger-assist.aspx" title="">click here</a>.</p>]]></com:Note>
+      </com:Annotation>
+      <com:ContactDetails>
+        <com:Annotation>
+          <com:Note><![CDATA[<p>03457 225 225 or 18001 03457 225 225 (Text relay service)</p>]]></com:Note>
+        </com:Annotation>
+        <com:Url>https://www.nationalrail.co.uk/</com:Url>
+      </com:ContactDetails>
+    </Helpline>
+    <StaffHelpAvailable>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>When arriving for booked or turn-up-and-go assistance, the meeting point is the Customer Information Point on the main concourse. Staff are available to provide Passenger Assist at all times that trains are operating for customers who have booked or who travel as turn-up-and-go. Assistance is available both to board/alight trains and also navigating around the station.</p>]]></com:Note>
+      </com:Annotation>
+      <com:Open>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:MondayToSunday>true</com:MondayToSunday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:TwentyFourHours>true</com:TwentyFourHours>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:MondayToFriday>true</com:MondayToFriday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:TwentyFourHours>true</com:TwentyFourHours>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:Saturday>true</com:Saturday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:TwentyFourHours>true</com:TwentyFourHours>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:Sunday>true</com:Sunday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:TwentyFourHours>true</com:TwentyFourHours>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+      </com:Open>
+    </StaffHelpAvailable>
+    <InductionLoop>true</InductionLoop>
+    <AccessibleTicketMachines>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>Accessible machines are available on the main concourse</p>]]></com:Note>
+      </com:Annotation>
+      <com:Available>true</com:Available>
+    </AccessibleTicketMachines>
+    <HeightAdjustedTicketOfficeCounter>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>Available during Travel Centre opening times</p>]]></com:Note>
+      </com:Annotation>
+      <com:Available>true</com:Available>
+    </HeightAdjustedTicketOfficeCounter>
+    <RampForTrainAccess>
+      <com:Available>true</com:Available>
+    </RampForTrainAccess>
+    <AccessibleTaxis>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>No advance booking is required but it will reduce the waiting time for a wheelchair access Taxi</p>]]></com:Note>
+      </com:Annotation>
+    </AccessibleTaxis>
+    <NationalKeyToilets>
+      <com:Available>true</com:Available>
+      <com:Location>
+        <com:Note><![CDATA[<p>The National key toilets are adjacent to Platform 2 and between Platforms 8 and 9; these toilets are operated by a radar key. A radar key is available from station staff.</p>]]></com:Note>
+      </com:Location>
+    </NationalKeyToilets>
+    <StepFreeAccess>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>This station has step free access to all platforms.</p><p>This station is a category A station according to the Office of Rail and Road station classification system <a href="https://www.orr.gov.uk/media/10955" title="">https://www.orr.gov.uk/media/10955</a>.</p><p>Lifts and level access to all platforms. Lift available from station concourse (platform 3) to platforms 5 -11. Customer assistance available 'Call for Aid' button by taxi rank at front of station. No level access to National Rail Museum via platforms 10/11, exit at front of station and around Station Hotel.</p><p>Staff can deploy station ramps at all times when trains are operating through this station to help customers who need step-free access board any train at this station. Where in circumstances beyond our control station staff are not available, on train staff can deploy the on board ramp if necessary.</p>]]></com:Note>
+      </com:Annotation>
+      <Coverage>wholeStation</Coverage>
+    </StepFreeAccess>
+    <TicketGates>
+      <com:Available>false</com:Available>
+    </TicketGates>
+    <ImpairedMobilitySetDown>
+      <com:Available>true</com:Available>
+    </ImpairedMobilitySetDown>
+    <WheelchairsAvailable>
+      <com:Available>true</com:Available>
+    </WheelchairsAvailable>
+  </Accessibility>
+  <Interchange>
+    <CycleStorage>
+      <Spaces>626</Spaces>
+      <Sheltered>Yes</Sheltered>
+      <Cctv>true</Cctv>
+      <Location>
+        <com:Note><![CDATA[<p>Within station, within car park, and next to the ticket office</p>]]></com:Note>
+      </Location>
+      <Annotation>
+        <com:Note><![CDATA[<p>80 secure stands.</p>]]></com:Note>
+      </Annotation>
+      <Type>Compounds</Type>
+      <Type>Stands</Type>
+      <Type>Racks</Type>
+    </CycleStorage>
+    <CarPark>
+      <com:ContactDetails>
+        <com:PostalAddress>
+          <add:Line>-</add:Line>
+          <add:Line>-</add:Line>
+        </com:PostalAddress>
+        <com:Url>https://www.nationalrail.co.uk</com:Url>
+      </com:ContactDetails>
+      <com:OperatorName><![CDATA[London North Eastern Railway]]></com:OperatorName>
+      <Name><![CDATA[Station Short Stay Car Park]]></Name>
+      <Spaces>30</Spaces>
+      <Charges>
+        <PerHour>£3.50</PerHour>
+        <Note><![CDATA[<p>Short stay 21-60 mins - £3.50</p><p>Short stay 61-120 mins - £6.50</p><p>The short-stay car park will be closed overnight between 01:00 and 04:00 from Tuesday 28 April to Friday 1 May. This to allow for repairs to the station roof.</p><p>The station long stay car park will be closed until further notice.</p><p>This is part of the York Station Gateway Project, where Network Rail will construct a new multi-storey car park on the site.</p><p>Parking for Blue Badge holders remains available as normal. All other users must find alternative facilities and allow extra time for travel. For other locations visit <a href="https://www.york.gov.uk/CarParks" title="">York.gov.uk/CarParks</a>.</p>]]></Note>
+      </Charges>
+      <NumberAccessibleSpaces>6</NumberAccessibleSpaces>
+      <AccessibleSpacesNote><![CDATA[<p>Parking is chargeable for all vehicles. £2.00 for first hour, then £10.00 per hour.</p><p>The short-stay car park will be closed on from Saturday 2 to Monday 4 May 2026 (inclusive). Please allow extra time to find alternative parking. </p>]]></AccessibleSpacesNote>
+      <AccessibleCarParkEquipment>true</AccessibleCarParkEquipment>
+      <Cctv>false</Cctv>
+    </CarPark>
+    <CarPark>
+      <com:ContactDetails>
+        <com:Annotation>
+          <com:Note><![CDATA[<p><strong>The station long stay car park will be closed until further notice.</strong></p><p>This is part of the York Station Gateway Project, where Network Rail will construct a new multi-storey car park on the site.</p><p>Parking for Blue Badge holders is available in the short stay car park. All other users must find alternative facilities and allow extra time for travel. For other locations visit <a href="https://www.york.gov.uk/CarParks" title="">York.gov.uk/CarParks</a>.</p>]]></com:Note>
+        </com:Annotation>
+        <com:PostalAddress>
+          <add:Line>-</add:Line>
+          <add:Line>-</add:Line>
+        </com:PostalAddress>
+        <com:Url>https://www.lner.co.uk/</com:Url>
+      </com:ContactDetails>
+      <com:Open>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:MondayToFriday>true</com:MondayToFriday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:Unavailable>true</com:Unavailable>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:Saturday>true</com:Saturday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:Unavailable>true</com:Unavailable>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+        <com:DayAndTimeAvailability>
+          <com:DayTypes>
+            <com:Sunday>true</com:Sunday>
+          </com:DayTypes>
+          <com:OpeningHours>
+            <com:TwentyFourHours>true</com:TwentyFourHours>
+          </com:OpeningHours>
+        </com:DayAndTimeAvailability>
+      </com:Open>
+      <com:OperatorName><![CDATA[London North Eastern Railway]]></com:OperatorName>
+      <Name><![CDATA[York Station Long Stay Car Park]]></Name>
+      <Spaces>0</Spaces>
+      <Charges>
+        <Off-peak>£7.50</Off-peak>
+        <Daily>£20.00</Daily>
+        <Weekly>£75.00</Weekly>
+        <Monthly>£227.50</Monthly>
+        <Annual>£1,925.00</Annual>
+        <Saturday>£7.50</Saturday>
+        <Sunday>£7.50</Sunday>
+        <Note><![CDATA[<p><strong>Closure of long stay car park from 15 March 2025</strong></p><p>From 23:59 on Friday 14 March, the station long stay car park will be closed until further notice.</p><p>This is part of the York Station Gateway Project, where Network Rail will construct a new multi-storey car park on the site.</p><p>Parking for blue badge holders will be unaffected. All other users must find alternative facilities and allow extra time for travel. For other locations visit <a href="https://www.york.gov.uk/CarParks" title="">York.gov.uk/CarParks</a>.</p><p>Short Stay 30-60 mins £3.50</p><p>Short Stay 61-120 mins - £6.50</p><p>Going away for a long weekend? Park from 10:00 on Friday until 23:59 on Monday for just £15.</p><p>Simply purchase your ticket at the car park on the day.</p>]]></Note>
+      </Charges>
+      <NumberAccessibleSpaces>0</NumberAccessibleSpaces>
+      <AccessibleCarParkEquipment>true</AccessibleCarParkEquipment>
+      <Cctv>false</Cctv>
+    </CarPark>
+    <RailReplacementServices>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>Rail replacement transport will depart from <strong>Bus Stop RD</strong>. Exit the station to the right via the main portico. The bus stop is located opposite the “Cycle Heaven at the Station” retail unit. </p>]]></com:Note>
+      </com:Annotation>
+    </RailReplacementServices>
+    <TaxiRank>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>York is a large station with taxis usually available on a rank. Advance booking is not normally necessary or even possible, unless arriving early in the morning or late at night. Operator who accept bookings:</p><p>Station Taxis 01904 623 332</p>]]></com:Note>
+      </com:Annotation>
+    </TaxiRank>
+    <OnwardTravel>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>Information to plan your onward journey is available in a printable format <a href="http://www.nationalrail.co.uk/posters/YRK.pdf" title="">here</a></p>]]></com:Note>
+      </com:Annotation>
+    </OnwardTravel>
+    <CarHire>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>Available from EuropCar on Platform1 or Hertz next to ladies toilets on Platform 3.</p>]]></com:Note>
+      </com:Annotation>
+    </CarHire>
+    <CycleHire>
+      <com:Annotation>
+        <com:Note><![CDATA[<p>Available from EuropCar office on Platform 1.</p>]]></com:Note>
+      </com:Annotation>
+    </CycleHire>
+  </Interchange>
+  <TrainOperatingCompanies>
+    <TocRef>GR</TocRef>
+  </TrainOperatingCompanies>
+</StationV4.0>

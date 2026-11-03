@@ -1,0 +1,22 @@
+[
+  {
+    "header": {
+      "msg_type": "0006",
+      "msg_queue_timestamp": "1791228153000",
+      "source_system_id": "TRUST",
+      "original_data_source": "SDR",
+      "user_id": "#QEP0005",
+      "source_dev_id": "SLMB"
+    },
+    "body": {
+      "train_id": "672C27MZ05",
+      "coo_timestamp": "1791231720000",
+      "loc_stanox": "67116",
+      "dep_timestamp": "1791233220000",
+      "train_service_code": "22332000",
+      "reason_code": "IS",
+      "division_code": "29",
+      "toc_id": "29"
+    }
+  }
+]

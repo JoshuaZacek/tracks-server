@@ -1,0 +1,418 @@
+[
+  {
+    "partition": 0,
+    "offset": "442482426",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455007\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:11.130Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455007",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:11.1302752+00:00\",\"version\":\"18.0\",\"FailureResp\":{\"code\":\"HBOK\",\"requestSource\":\"at42\",\"requestID\":\"0000000000004050\",\"\":\"Darwin Status Response\"}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671571130,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455006",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670971130
+    }
+  },
+  {
+    "partition": 0,
+    "offset": "442482427",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455008\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:12.062Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455008",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:12.0621101+00:00\",\"version\":\"18.0\",\"FailureResp\":{\"code\":\"HBOK\",\"requestSource\":\"at15\",\"requestID\":\"0000000000006003\",\"\":\"Darwin Status Response\"}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671572062,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455007",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670972062
+    }
+  },
+  {
+    "partition": 0,
+    "offset": "442482428",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455009\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:12.485Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455009",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:12.4857851+00:00\",\"version\":\"18.0\",\"FailureResp\":{\"code\":\"HBOK\",\"requestSource\":\"kt04\",\"requestID\":\"OK\",\"\":\"Darwin Status Response\"}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671572485,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455008",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670972485
+    }
+  },
+  {
+    "partition": 0,
+    "offset": "442482429",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455010\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:13.854Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455010",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:13.8544584+00:00\",\"version\":\"18.0\",\"uR\":{\"updateOrigin\":\"TD\",\"TS\":{\"rid\":\"202611036710190\",\"uid\":\"C10190\",\"ssd\":\"2026-11-03\",\"Location\":{\"tpl\":\"NEWSGAT\",\"wta\":\"01:55\",\"wtd\":\"01:55:30\",\"pta\":\"01:55\",\"ptd\":\"01:55\",\"arr\":{\"at\":\"01:54\",\"atClass\":\"Automatic\",\"src\":\"TD\"},\"dep\":{\"at\":\"01:55\",\"atClass\":\"Automatic\",\"src\":\"TD\"},\"plat\":{\"platsrc\":\"A\",\"conf\":\"true\",\"\":\"4\"},\"length\":\"6\"}}}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671573854,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455009",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670973854
+    }
+  },
+  {
+    "partition": 0,
+    "offset": "442482430",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455011\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:13.861Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455011",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:13.8609738+00:00\",\"version\":\"18.0\",\"uR\":{\"updateOrigin\":\"Trust\",\"TS\":{\"rid\":\"202611027114947\",\"uid\":\"G14947\",\"ssd\":\"2026-11-02\",\"LateReason\":\"895\",\"Location\":[{\"tpl\":\"CTSARTJ\",\"wtp\":\"01:56\",\"pass\":{\"at\":\"01:56\",\"atClass\":\"Automatic\",\"src\":\"TRUST\",\"srcInst\":\"Auto\"},\"length\":\"5\"},{\"tpl\":\"NEATH\",\"wta\":\"01:58\",\"wtd\":\"01:59:30\",\"pta\":\"01:58\",\"ptd\":\"01:59\",\"arr\":{\"et\":\"01:58\",\"src\":\"Darwin\"},\"dep\":{\"et\":\"01:59\",\"src\":\"Darwin\"},\"plat\":{\"platsrc\":\"A\",\"conf\":\"true\",\"\":\"1\"},\"length\":\"5\"},{\"tpl\":\"SKEWEN\",\"wtp\":\"02:02\",\"pass\":{\"et\":\"02:01\",\"src\":\"Darwin\"},\"plat\":{\"platsup\":\"true\",\"cisPlatsup\":\"true\",\"platsrc\":\"A\",\"conf\":\"true\",\"\":\"1\"},\"length\":\"5\"},{\"tpl\":\"LLNSMLT\",\"wtp\":\"02:04\",\"pass\":{\"et\":\"02:03\",\"src\":\"Darwin\"},\"plat\":{\"platsup\":\"true\",\"cisPlatsup\":\"true\",\"platsrc\":\"A\",\"conf\":\"true\",\"\":\"1\"},\"length\":\"5\"},{\"tpl\":\"SWANSLE\",\"wtp\":\"02:09\",\"pass\":{\"et\":\"02:07\",\"src\":\"Darwin\"},\"length\":\"5\"},{\"tpl\":\"SWANSEA\",\"wta\":\"02:11\",\"pta\":\"02:11\",\"arr\":{\"et\":\"02:11\",\"wet\":\"02:09\",\"src\":\"Darwin\"},\"plat\":\"4\",\"length\":\"5\"}]}}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671573861,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455010",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670973861
+    }
+  },
+  {
+    "partition": 0,
+    "offset": "442482431",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455012\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:14.665Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455012",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:14.6650783+00:00\",\"version\":\"18.0\",\"FailureResp\":{\"code\":\"HBOK\",\"requestSource\":\"kt07\",\"requestID\":\"ketech\",\"\":\"Darwin Status Response\"}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671574665,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455011",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670974665
+    }
+  },
+  {
+    "partition": 0,
+    "offset": "442482432",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455013\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:14.839Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455013",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:14.8394789+00:00\",\"version\":\"18.0\",\"uR\":{\"updateOrigin\":\"CIS\",\"requestSource\":\"at57\",\"requestID\":\"0000000000038609\",\"TS\":{\"rid\":\"202611038652274\",\"uid\":\"V52274\",\"ssd\":\"2026-11-03\",\"LateReason\":\"547\",\"Location\":{\"tpl\":\"FLINT\",\"wta\":\"01:04:30\",\"wtd\":\"01:05:30\",\"pta\":\"01:05\",\"ptd\":\"01:05\",\"arr\":{\"et\":\"01:57\",\"src\":\"Darwin\"},\"dep\":{\"et\":\"01:57\",\"src\":\"Darwin\"},\"plat\":{\"platsrc\":\"A\",\"conf\":\"true\",\"\":\"2\"},\"length\":\"3\"}}}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671574839,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455012",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670974839
+    }
+  },
+  {
+    "partition": 0,
+    "offset": "442482433",
+    "key": "{\"messageID\":\"ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455014\"}",
+    "headers": {},
+    "timestamp": "2026-11-03T01:56:15.482Z",
+    "value": {
+      "destination": {
+        "name": "Consumer.rdmportal.VirtualTopic.PushPort-v18",
+        "destinationType": "queue"
+      },
+      "messageID": "ID:ip-100-80-24-23.eu-west-1.compute.internal-39565-639289082796674004-1:11:1:1:7455014",
+      "type": null,
+      "priority": 5,
+      "redelivered": false,
+      "messageType": "bytes",
+      "deliveryMode": 1,
+      "bytes": "{\"ts\":\"2026-11-03T01:56:15.4820123+00:00\",\"version\":\"18.0\",\"FailureResp\":{\"code\":\"HBOK\",\"requestSource\":\"at55\",\"requestID\":\"0000000000041898\",\"\":\"Darwin Status Response\"}}",
+      "replyTo": null,
+      "correlationID": null,
+      "expiration": 1793671575482,
+      "text": null,
+      "map": null,
+      "properties": {
+        "Username": {
+          "boolean": null,
+          "string": "externalmqapps",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        },
+        "PushPortSequence": {
+          "boolean": null,
+          "string": "7455013",
+          "byte": null,
+          "double": null,
+          "bytes": null,
+          "propertyType": "string",
+          "short": null,
+          "integer": null,
+          "float": null,
+          "long": null
+        }
+      },
+      "timestamp": 1793670975482
+    }
+  }
+]

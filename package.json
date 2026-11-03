@@ -1,0 +1,57 @@
+{
+  "name": "tracks-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend API for tracks, a UK train tracker iOS app",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/server.ts",
+    "dev:worker": "node --watch --env-file-if-exists=.env src/worker.ts",
+    "start": "node src/server.ts",
+    "start:worker": "node src/worker.ts",
+    "migrate": "node --env-file-if-exists=.env scripts/migrate.ts",
+    "openapi": "node scripts/generate-openapi.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "openapi:check": "node scripts/generate-openapi.ts --check",
+    "check": "npm run typecheck && npm run lint && npm run openapi:check && npm test",
+    "import:schedule": "node --env-file-if-exists=.env scripts/import-schedule.ts",
+    "import:stations": "node --env-file-if-exists=.env scripts/import-stations.ts",
+    "build:places": "node --env-file-if-exists=.env scripts/build-places.ts",
+    "capture:darwin": "node --env-file-if-exists=.env scripts/capture-darwin.ts"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
+    "fast-xml-parser": "^5.11.2",
+    "helmet": "^8.3.0",
+    "kafkajs": "^2.2.4",
+    "kysely": "^0.29.8",
+    "pg": "^8.23.1",
+    "pg-copy-streams": "^7.0.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "@types/pg-copy-streams": "^1.2.5",
+    "@types/supertest": "^7.2.1",
+    "eslint": "^10.14.0",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  }
+}

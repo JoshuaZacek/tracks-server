@@ -1,0 +1,510 @@
+{
+  "capturedAt": "2026-10-05T17:42:25.883Z",
+  "request": {
+    "method": "GET",
+    "url": "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepartureBoard/YRK?numRows=15"
+  },
+  "status": 200,
+  "headers": {
+    "alt-svc": "h3=\":443\"; ma=2592000",
+    "cache-control": "public,no-cache",
+    "content-length": "7918",
+    "content-security-policy": "default-src 'self' blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk; script-src 'self' data: blob: 'nonce-rdmGTMDexam' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com; style-src 'unsafe-inline' *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk 'self'; img-src 'self' data: blob: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://*.stripe.com; font-src 'self' data: *.raildata.org.uk *.gstatic.com; connect-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://api.stripe.com; frame-src 'self' blob: data: *.gstatic.com *.google.com *.google-analytics.com *.googletagmanager.com *.googleapis.com stats.g.doubleclick.net *.raildata.org.uk https://checkout.stripe.com https://connect-js.stripe.com https://js.stripe.com https://hooks.stripe.com https://stripe-data-exports.s3.amazonaws.com;",
+    "content-type": "application/json; charset=utf-8",
+    "date": "Mon, 05 Oct 2026 17:42:25 GMT",
+    "pragma": "no-cache",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "via": "1.1 google",
+    "x-aspnet-version": "4.0.30319",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "SAMEORIGIN",
+    "x-powered-by": "ASP.NET",
+    "x-request-id": "fbb6345e-1ab2-4a1a-bb17-dc53740ea7f4"
+  },
+  "body": {
+    "trainServices": [
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Liverpool Lime Street",
+            "crs": "LIV",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Newcastle",
+            "crs": "NCL",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:22",
+        "etd": "18:55",
+        "platform": "TBC",
+        "operator": "TransPennine Express",
+        "operatorCode": "TP",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 5,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "delayReason": "This service has been delayed by animals on the railway",
+        "serviceID": "9388583YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Manchester Airport",
+            "crs": "MIA",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Saltburn",
+            "crs": "SLB",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:39",
+        "etd": "19:02",
+        "platform": "TBC",
+        "operator": "TransPennine Express",
+        "operatorCode": "TP",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 6,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "delayReason": "This service has been delayed by animals on the railway",
+        "serviceID": "9381585YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "York",
+            "crs": "YRK",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Bridlington",
+            "crs": "BDT",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:43",
+        "etd": "On time",
+        "platform": "1",
+        "operator": "Northern",
+        "operatorCode": "NT",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 2,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9399122YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Edinburgh",
+            "crs": "EDB",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Bristol Temple Meads",
+            "crs": "BRI",
+            "via": "via Leeds",
+            "assocIsCancelled": false
+          }
+        ],
+        "rsid": "XC179000",
+        "std": "18:43",
+        "etd": "On time",
+        "platform": "5A",
+        "operator": "CrossCountry",
+        "operatorCode": "XC",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 0,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9387375YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "York",
+            "crs": "YRK",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Burley Park",
+            "crs": "BUY",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:45",
+        "etd": "On time",
+        "platform": "8",
+        "operator": "Northern",
+        "operatorCode": "NT",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 3,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9392304YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Scarborough",
+            "crs": "SCA",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Manchester Victoria",
+            "crs": "MCV",
+            "assocIsCancelled": false
+          }
+        ],
+        "rsid": "TP524900",
+        "std": "18:49",
+        "etd": "On time",
+        "platform": "4",
+        "operator": "TransPennine Express",
+        "operatorCode": "TP",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 3,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9388535YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Doncaster",
+            "crs": "DON",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Sunderland",
+            "crs": "SUN",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:52",
+        "etd": "On time",
+        "operator": "Grand Central",
+        "operatorCode": "GC",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 0,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9447265YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Edinburgh",
+            "crs": "EDB",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:55",
+        "etd": "19:06",
+        "platform": "3",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 9,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "delayReason": "This service has been delayed by trespassers on the railway",
+        "serviceID": "9378144YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "York",
+            "crs": "YRK",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Manchester Piccadilly",
+            "crs": "MAN",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "18:58",
+        "etd": "On time",
+        "platform": "7",
+        "operator": "TransPennine Express",
+        "operatorCode": "TP",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 3,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9388547YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Newcastle",
+            "crs": "NCL",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Liverpool Lime Street",
+            "crs": "LIV",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:04",
+        "etd": "On time",
+        "platform": "10",
+        "operator": "TransPennine Express",
+        "operatorCode": "TP",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 5,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9381633YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Edinburgh",
+            "crs": "EDB",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:06",
+        "etd": "On time",
+        "platform": "9",
+        "operator": "LNER",
+        "operatorCode": "GR",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 9,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9392143YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "York",
+            "crs": "YRK",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Leeds",
+            "crs": "LDS",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:08",
+        "etd": "On time",
+        "platform": "11",
+        "operator": "Northern",
+        "operatorCode": "NT",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 2,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9399645YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Sunderland",
+            "crs": "SUN",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "London Kings Cross",
+            "crs": "KGX",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:11",
+        "etd": "19:13",
+        "platform": "5",
+        "operator": "Grand Central",
+        "operatorCode": "GC",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 0,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9409613YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "Manchester Victoria",
+            "crs": "MCV",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Scarborough",
+            "crs": "SCA",
+            "assocIsCancelled": false
+          }
+        ],
+        "rsid": "TP524800",
+        "std": "19:11",
+        "etd": "19:19",
+        "platform": "4",
+        "operator": "TransPennine Express",
+        "operatorCode": "TP",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 3,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "delayReason": "This service has been delayed by animals on the railway",
+        "serviceID": "9381572YORK____"
+      },
+      {
+        "futureCancellation": false,
+        "futureDelay": false,
+        "origin": [
+          {
+            "locationName": "York",
+            "crs": "YRK",
+            "assocIsCancelled": false
+          }
+        ],
+        "destination": [
+          {
+            "locationName": "Burley Park",
+            "crs": "BUY",
+            "assocIsCancelled": false
+          }
+        ],
+        "std": "19:14",
+        "etd": "On time",
+        "platform": "8",
+        "operator": "Northern",
+        "operatorCode": "NT",
+        "isCircularRoute": false,
+        "isCancelled": false,
+        "filterLocationCancelled": false,
+        "serviceType": "train",
+        "length": 3,
+        "detachFront": false,
+        "isReverseFormation": false,
+        "serviceID": "9392310YORK____"
+      }
+    ],
+    "generatedAt": "2026-10-05T18:42:25.8190347+01:00",
+    "locationName": "York",
+    "crs": "YRK",
+    "filterType": "to",
+    "platformAvailable": true,
+    "areServicesAvailable": true,
+    "Xmlns": {
+      "Count": 8
+    }
+  }
+}

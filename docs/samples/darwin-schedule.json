@@ -1,0 +1,650 @@
+[
+  {
+    "rid": "202611038941858",
+    "uid": "Y41858",
+    "trainId": "2F06",
+    "rsid": "GW546400",
+    "ssd": "2026-11-03",
+    "toc": "GW",
+    "OR": {
+      "tpl": "PAIGNTN",
+      "act": "TB",
+      "ptd": "05:57",
+      "wtd": "05:57"
+    },
+    "IP": [
+      {
+        "tpl": "TORQUAY",
+        "act": "T ",
+        "pta": "06:01",
+        "ptd": "06:02",
+        "wta": "06:01",
+        "wtd": "06:02"
+      },
+      {
+        "tpl": "TORRE",
+        "act": "T ",
+        "pta": "06:04",
+        "ptd": "06:05",
+        "wta": "06:04",
+        "wtd": "06:05"
+      },
+      {
+        "tpl": "NABT",
+        "act": "T ",
+        "pta": "06:12",
+        "ptd": "06:35",
+        "wta": "06:12",
+        "wtd": "06:35"
+      },
+      {
+        "tpl": "TEINMTH",
+        "act": "T ",
+        "pta": "06:41",
+        "ptd": "06:42",
+        "wta": "06:41",
+        "wtd": "06:42"
+      },
+      {
+        "tpl": "DAWLISH",
+        "act": "T ",
+        "pta": "06:46",
+        "ptd": "06:47",
+        "wta": "06:46",
+        "wtd": "06:47"
+      },
+      {
+        "tpl": "DAWLSHW",
+        "act": "T ",
+        "pta": "06:51",
+        "ptd": "06:51",
+        "wta": "06:50:30",
+        "wtd": "06:51:30"
+      },
+      {
+        "tpl": "STRCROS",
+        "act": "T ",
+        "pta": "06:55",
+        "ptd": "06:56",
+        "wta": "06:55",
+        "wtd": "06:56"
+      },
+      {
+        "tpl": "MSBTN",
+        "act": "T ",
+        "pta": "07:03",
+        "ptd": "07:03",
+        "wta": "07:03",
+        "wtd": "07:03:30"
+      },
+      {
+        "tpl": "EXETRST",
+        "act": "T ",
+        "pta": "07:07",
+        "ptd": "07:07",
+        "wta": "07:06:30",
+        "wtd": "07:07:30"
+      },
+      {
+        "tpl": "EXETRSD",
+        "act": "T RM",
+        "pta": "07:11",
+        "ptd": "07:16",
+        "wta": "07:11",
+        "wtd": "07:16"
+      },
+      {
+        "tpl": "EXETERC",
+        "act": "T ",
+        "pta": "07:19",
+        "ptd": "07:20",
+        "wta": "07:18:30",
+        "wtd": "07:20"
+      },
+      {
+        "tpl": "STJAMSP",
+        "act": "T ",
+        "pta": "07:22",
+        "ptd": "07:22",
+        "wta": "07:21:30",
+        "wtd": "07:22"
+      },
+      {
+        "tpl": "POLSBDG",
+        "act": "T ",
+        "pta": "07:25",
+        "ptd": "07:25",
+        "wta": "07:24:30",
+        "wtd": "07:25"
+      },
+      {
+        "tpl": "DIGBY",
+        "act": "T ",
+        "pta": "07:29",
+        "ptd": "07:29",
+        "wta": "07:28",
+        "wtd": "07:29"
+      },
+      {
+        "tpl": "NWCOURT",
+        "act": "T ",
+        "pta": "07:32",
+        "ptd": "07:32",
+        "wta": "07:31",
+        "wtd": "07:32"
+      },
+      {
+        "tpl": "TOPSHAM",
+        "act": "T X ",
+        "pta": "07:36",
+        "ptd": "07:37",
+        "wta": "07:35",
+        "wtd": "07:37"
+      },
+      {
+        "tpl": "EXTON",
+        "act": "R ",
+        "pta": "07:39",
+        "ptd": "07:39",
+        "wta": "07:39:30",
+        "wtd": "07:40"
+      },
+      {
+        "tpl": "LYMPSTC",
+        "act": "R ",
+        "pta": "07:41",
+        "ptd": "07:41",
+        "wta": "07:41:30",
+        "wtd": "07:42"
+      },
+      {
+        "tpl": "LYMPSTN",
+        "act": "T ",
+        "pta": "07:44",
+        "ptd": "07:44",
+        "wta": "07:44",
+        "wtd": "07:44:30"
+      }
+    ],
+    "PP": [
+      {
+        "tpl": "NABTWJ",
+        "wtp": "06:11"
+      },
+      {
+        "tpl": "EXMOTHJ",
+        "wtp": "07:23:30"
+      }
+    ],
+    "DT": {
+      "tpl": "EXMOUTH",
+      "act": "TF",
+      "pta": "07:49",
+      "wta": "07:49"
+    }
+  },
+  {
+    "rid": "202611038787064",
+    "uid": "W87064",
+    "trainId": "5N01",
+    "ssd": "2026-11-03",
+    "toc": "SR",
+    "trainCat": "EE",
+    "isPassengerSvc": "false",
+    "OPOR": {
+      "tpl": "GLGC",
+      "act": "TB",
+      "wtd": "05:57"
+    },
+    "PP": [
+      {
+        "tpl": "GLGCBSJ",
+        "wtp": "05:59"
+      },
+      {
+        "tpl": "MRHSNJ",
+        "wtp": "06:01"
+      },
+      {
+        "tpl": "MTFL",
+        "wtp": "06:03:30"
+      },
+      {
+        "tpl": "CCRT",
+        "wtp": "06:04:30"
+      },
+      {
+        "tpl": "CCRTWJN",
+        "wtp": "06:05"
+      }
+    ],
+    "OPIP": [
+      {
+        "tpl": "NEILSTN",
+        "act": "OP",
+        "wta": "06:19",
+        "wtd": "06:19:30"
+      },
+      {
+        "tpl": "NEILTBS",
+        "act": "RMOP",
+        "wta": "06:21",
+        "wtd": "06:26"
+      }
+    ],
+    "OPDT": {
+      "tpl": "NEILSTN",
+      "act": "TF",
+      "wta": "06:27:30"
+    }
+  },
+  {
+    "rid": "202611038787020",
+    "uid": "W87020",
+    "trainId": "5M17",
+    "ssd": "2026-11-03",
+    "toc": "SR",
+    "trainCat": "EE",
+    "isPassengerSvc": "false",
+    "OPOR": {
+      "tpl": "BTHGCSD",
+      "act": "TB",
+      "wtd": "05:57"
+    },
+    "OPDT": {
+      "tpl": "BTHGATE",
+      "act": "TF",
+      "wta": "05:59"
+    }
+  },
+  {
+    "rid": "202611038786347",
+    "uid": "W86347",
+    "trainId": "5F03",
+    "ssd": "2026-11-03",
+    "toc": "SR",
+    "trainCat": "EE",
+    "isPassengerSvc": "false",
+    "OPOR": {
+      "tpl": "MOTHDCS",
+      "act": "TB",
+      "wtd": "05:57"
+    },
+    "OPDT": {
+      "tpl": "MOTHRWL",
+      "act": "TF",
+      "wta": "05:59"
+    }
+  },
+  {
+    "rid": "202611038760794",
+    "uid": "W60794",
+    "trainId": "5T11",
+    "ssd": "2026-11-03",
+    "toc": "LO",
+    "trainCat": "EE",
+    "isPassengerSvc": "false",
+    "OPOR": {
+      "tpl": "CHINCS4",
+      "act": "TB",
+      "wtd": "05:57"
+    },
+    "OPDT": {
+      "tpl": "CHINGFD",
+      "act": "TF",
+      "wta": "05:59"
+    }
+  },
+  {
+    "rid": "202611038735166",
+    "uid": "W35166",
+    "trainId": "1L06",
+    "ssd": "2026-11-03",
+    "toc": "GW",
+    "trainCat": "XX",
+    "OR": {
+      "tpl": "SWANSEA",
+      "act": "TB",
+      "ptd": "05:57",
+      "wtd": "05:57"
+    },
+    "PP": [
+      {
+        "tpl": "SWANSLE",
+        "wtp": "05:58:30"
+      },
+      {
+        "tpl": "BRITFWJ",
+        "wtp": "06:11:30"
+      },
+      {
+        "tpl": "MRGMEJ",
+        "wtp": "06:19:30"
+      },
+      {
+        "tpl": "MRGMMJN",
+        "wtp": "06:20:30"
+      },
+      {
+        "tpl": "STORMY",
+        "wtp": "06:23:30"
+      },
+      {
+        "tpl": "PENCOED",
+        "wtp": "06:33"
+      },
+      {
+        "tpl": "PONYCLN",
+        "wtp": "06:37"
+      },
+      {
+        "tpl": "LCKWTHJ",
+        "wtp": "06:46"
+      },
+      {
+        "tpl": "LNGDYKJ",
+        "wtp": "06:53:30"
+      },
+      {
+        "tpl": "MSHFILD",
+        "wtp": "06:57:30"
+      },
+      {
+        "tpl": "EBBWJ",
+        "wtp": "07:00"
+      },
+      {
+        "tpl": "GAERJ",
+        "wtp": "07:00:30"
+      },
+      {
+        "tpl": "MAINDWJ",
+        "wtp": "07:05:30"
+      },
+      {
+        "tpl": "MAINDEJ",
+        "wtp": "07:06"
+      },
+      {
+        "tpl": "LWERWJN",
+        "wtp": "07:08"
+      },
+      {
+        "tpl": "SEVTNLJ",
+        "wtp": "07:13"
+      },
+      {
+        "tpl": "SEVTNLW",
+        "wtp": "07:14"
+      },
+      {
+        "tpl": "SEVTNLE",
+        "wtp": "07:17:30"
+      },
+      {
+        "tpl": "PILNING",
+        "wtp": "07:18:30"
+      },
+      {
+        "tpl": "PATCHWY",
+        "wtp": "07:22:30"
+      },
+      {
+        "tpl": "WSTLGHJ",
+        "wtp": "07:33"
+      },
+      {
+        "tpl": "HLVNGTN",
+        "wtp": "07:39:30"
+      },
+      {
+        "tpl": "WTNBSTJ",
+        "wtp": "07:46"
+      },
+      {
+        "tpl": "UFNGTN",
+        "wtp": "08:00"
+      },
+      {
+        "tpl": "CHALLOW",
+        "wtp": "08:01:30"
+      },
+      {
+        "tpl": "WANTRD",
+        "wtp": "08:03"
+      },
+      {
+        "tpl": "GORASTR",
+        "wtp": "08:16"
+      },
+      {
+        "tpl": "RDNGHLJ",
+        "wtp": "08:21:30"
+      },
+      {
+        "tpl": "RDNGKBJ",
+        "wtp": "08:26"
+      },
+      {
+        "tpl": "TWYFORD",
+        "wtp": "08:29"
+      },
+      {
+        "tpl": "MDNHEAD",
+        "wtp": "08:32:30"
+      },
+      {
+        "tpl": "SLOUGH",
+        "wtp": "08:35:30"
+      },
+      {
+        "tpl": "STKYJN",
+        "wtp": "08:38:30"
+      },
+      {
+        "tpl": "HTRWAJN",
+        "wtp": "08:39"
+      },
+      {
+        "tpl": "STHALL",
+        "wtp": "08:40:30"
+      },
+      {
+        "tpl": "ACTONW",
+        "wtp": "08:43"
+      },
+      {
+        "tpl": "LDBRKJ",
+        "wtp": "08:46:30"
+      },
+      {
+        "tpl": "PRTOBJP",
+        "wtp": "08:47"
+      },
+      {
+        "tpl": "ROYAOJN",
+        "wtp": "08:48:30"
+      }
+    ],
+    "IP": [
+      {
+        "tpl": "NEATH",
+        "act": "T ",
+        "pta": "06:08",
+        "ptd": "06:09",
+        "wta": "06:07:30",
+        "wtd": "06:09"
+      },
+      {
+        "tpl": "PTALBOT",
+        "act": "T ",
+        "pta": "06:15",
+        "ptd": "06:16",
+        "wta": "06:15",
+        "wtd": "06:16:30"
+      },
+      {
+        "tpl": "BRGEND",
+        "act": "T ",
+        "pta": "06:28",
+        "ptd": "06:29",
+        "wta": "06:27:30",
+        "wtd": "06:29"
+      },
+      {
+        "tpl": "CRDFCEN",
+        "act": "T ",
+        "pta": "06:49",
+        "ptd": "06:51",
+        "wta": "06:49:30",
+        "wtd": "06:51:30"
+      },
+      {
+        "tpl": "NWPTRTG",
+        "act": "T ",
+        "pta": "07:03",
+        "ptd": "07:04",
+        "wta": "07:02:30",
+        "wtd": "07:04:30"
+      },
+      {
+        "tpl": "BRSTPWY",
+        "act": "T ",
+        "pta": "07:26",
+        "ptd": "07:29",
+        "wta": "07:26",
+        "wtd": "07:29"
+      },
+      {
+        "tpl": "SDON",
+        "act": "T ",
+        "pta": "07:51",
+        "ptd": "07:53",
+        "wta": "07:51:30",
+        "wtd": "07:53:30"
+      },
+      {
+        "tpl": "DIDCOTP",
+        "act": "T ",
+        "pta": "08:09",
+        "ptd": "08:10",
+        "wta": "08:08:30",
+        "wtd": "08:10:30"
+      },
+      {
+        "tpl": "RDNGSTN",
+        "act": "T ",
+        "pta": "08:22",
+        "ptd": "08:25",
+        "wta": "08:23",
+        "wtd": "08:25"
+      }
+    ],
+    "DT": {
+      "tpl": "PADTON",
+      "act": "TF",
+      "pta": "08:51",
+      "wta": "08:50:30"
+    }
+  },
+  {
+    "rid": "202611038734247",
+    "uid": "W34247",
+    "trainId": "5R16",
+    "ssd": "2026-11-03",
+    "toc": "VT",
+    "trainCat": "EE",
+    "isPassengerSvc": "false",
+    "OPOR": {
+      "tpl": "LNGSTCS",
+      "act": "TB",
+      "wtd": "05:57"
+    },
+    "OPIP": {
+      "tpl": "LNGSTN",
+      "act": "OP",
+      "wta": "06:02",
+      "wtd": "06:02"
+    },
+    "PP": {
+      "tpl": "ARDWCKJ",
+      "wtp": "06:05"
+    },
+    "OPDT": {
+      "tpl": "MNCRPIC",
+      "act": "TF",
+      "wta": "06:08"
+    }
+  },
+  {
+    "rid": "202611038734146",
+    "uid": "W34146",
+    "trainId": "3R25",
+    "ssd": "2026-11-03",
+    "toc": "VT",
+    "trainCat": "EE",
+    "isPassengerSvc": "false",
+    "OPOR": {
+      "tpl": "CREWECS",
+      "act": "TB",
+      "wtd": "05:57"
+    },
+    "OPIP": [
+      {
+        "tpl": "CREWC57",
+        "act": "OP",
+        "wta": "05:59",
+        "wtd": "05:59"
+      },
+      {
+        "tpl": "CREWE",
+        "act": "OPC ",
+        "wta": "06:02",
+        "wtd": "06:05"
+      },
+      {
+        "tpl": "CHST",
+        "act": "OPC ",
+        "wta": "06:29",
+        "wtd": "06:33"
+      },
+      {
+        "tpl": "CROESNF",
+        "act": "OPRM",
+        "wta": "06:49",
+        "wtd": "06:58"
+      }
+    ],
+    "PP": [
+      {
+        "tpl": "CREWESW",
+        "wtp": "06:08"
+      },
+      {
+        "tpl": "BESTTSB",
+        "wtp": "06:15:30"
+      },
+      {
+        "tpl": "CHSTRSJ",
+        "wtp": "06:34"
+      },
+      {
+        "tpl": "SLNYJN",
+        "wtp": "06:36"
+      },
+      {
+        "tpl": "RSSTTJN",
+        "wtp": "06:40:30"
+      },
+      {
+        "tpl": "WREXHMG",
+        "wtp": "06:47"
+      }
+    ],
+    "OPDT": {
+      "tpl": "WREXHMG",
+      "act": "TF",
+      "wta": "07:01"
+    }
+  }
+]
