@@ -20,13 +20,16 @@ const DOWNLOAD_TIMEOUT_MS = 15 * 60_000;
 /** After a failed download, try again this often, this many times, before waiting for the next day. */
 const RETRY_MS = 60 * 60_000;
 const RETRIES = 5;
-/** At startup, download unless the file on disk is younger than this. */
-const STARTUP_DOWNLOAD_AGE_MS = 20 * 3600_000;
+/**
+ * At startup, download if the imported timetable was generated longer ago than this. Network
+ * Rail generates the extract nightly (around 01:00), so a younger one is the latest there is.
+ */
+const STARTUP_DOWNLOAD_AGE_MS = 26 * 3600_000;
 
 /**
  * At startup and daily at SCHEDULE_REFRESH_TIME (UK time):
- * 1. Download the schedule extract if NWR_SCHEDULE_URL is set (at startup only if the file
- *    is missing or older than 20 h). It is checked (a complete JsonTimetableV1 file, newer
+ * 1. Download the schedule extract if NWR_SCHEDULE_URL is set (at startup only if the
+ *    imported timetable was generated over 26 h ago, or there is none). It is checked (a complete JsonTimetableV1 file, newer
  *    than the one imported) before it replaces the file in DATA_DIR. A failed download is
  *    retried hourly, 5 times. Without NWR_SCHEDULE_URL, the file is replaced by hand.
  * 2. Import it if it's newer than the last import (or nothing is imported yet), in a
@@ -53,12 +56,20 @@ export function startDailyRefresh(db: Db, config: Config, log: Logger) {
     log.info({ next: next.toISOString() }, 'Next reference data refresh scheduled');
     timer = setTimeout(() => void runRefresh(db, config, log, true).then(after), next.getTime() - Date.now());
   };
-  const stale = !fs.existsSync(config.scheduleFile) || Date.now() - fs.statSync(config.scheduleFile).mtimeMs > STARTUP_DOWNLOAD_AGE_MS;
-  void runRefresh(db, config, log, stale).then(after);
+  // By the generation time inside the timetable, not the file's date (a file copied in by hand is "new" on disk).
+  void startupNeedsDownload(db)
+    .catch(() => true)
+    .then((download) => runRefresh(db, config, log, download))
+    .then(after);
   return () => {
     stopped = true;
     clearTimeout(timer);
   };
+}
+
+async function startupNeedsDownload(db: Db) {
+  const generated = await getMeta(db, META_KEYS.timestamp);
+  return !generated || Date.now() - Date.parse(generated) > STARTUP_DOWNLOAD_AGE_MS;
 }
 
 export interface RefreshResult {

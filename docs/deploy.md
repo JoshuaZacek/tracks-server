@@ -201,7 +201,7 @@ in newer files. The worker downloads it from **Network Rail Open Data (NROD)**, 
 
 **What the worker then does:**
 - **When:** downloads at `SCHEDULE_REFRESH_TIME` (04:00 UK) each day, after Network Rail publishes the night's extract,
-  and at startup if its copy is over 20 hours old.
+  and at startup if the imported timetable was generated over 26 hours ago.
 - **Credentials:** they go to NROD only. NROD redirects to a pre-signed storage URL, and the credentials aren't sent on
   there.
 - **Checks before use:** the file must decompress to the end, start with the timetable header and end with the EOF
