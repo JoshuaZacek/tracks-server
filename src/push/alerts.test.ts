@@ -22,6 +22,7 @@ interface Opts {
   arrDelay?: number | null;
   platform?: string | null;
   confirmed?: boolean;
+  hidden?: boolean;
   cancelled?: boolean;
   actualDeparture?: string | null;
   expectedArrival?: string | null;
@@ -55,7 +56,7 @@ function status(o: Opts = {}): LiveStatusOut {
       expectedDeparture: delay === null ? null : t(`17:${String(delay).padStart(2, '0')}`),
       actualDeparture: o.actualDeparture ?? null,
       delayMinutes: delay,
-      platform: o.platform ? { number: o.platform, source: 'live', confirmed: o.confirmed ?? false } : null,
+      platform: o.platform ? { number: o.platform, source: 'live', confirmed: o.confirmed ?? false, hidden: o.hidden ?? false } : null,
       isCancelled: o.cancelled ?? false,
       cancelReason: null,
       delayReason: null,
@@ -68,7 +69,7 @@ function status(o: Opts = {}): LiveStatusOut {
           expected: o.expectedArrival ?? null,
           actual: o.actualArrival ?? null,
           delayMinutes: o.arrDelay ?? null,
-          platform: { number: '4', source: 'live', confirmed: true },
+          platform: { number: '4', source: 'live', confirmed: true, hidden: false },
         }),
       ],
       lastPassedIndex: -1,
@@ -101,8 +102,11 @@ describe('planAlerts', () => {
     expect(plan(change.next, status({ platform: '9', confirmed: true })).alerts).toEqual([]);
   });
 
-  it('marks an unconfirmed platform as expected', () => {
+  it('marks an unconfirmed platform as expected, and one the station hides as not yet announced', () => {
     expect(bodies(plan(quiet, status({ platform: '2' })))).toEqual(['platform: Departs from platform 2 (expected).']);
+    expect(bodies(plan(quiet, status({ platform: '2', confirmed: true, hidden: true })))).toEqual([
+      'platform: Departs from platform 2, not yet announced at the station.',
+    ]);
   });
 
   it('alerts on reaching the delay threshold, on 5+ minute moves, and on recovery, not on small drift', () => {

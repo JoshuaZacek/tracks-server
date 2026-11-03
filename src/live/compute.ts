@@ -131,8 +131,13 @@ class DarwinRun {
   }
 }
 
+/**
+ * Darwin's live platform. A platform the station keeps off its own boards (platsup/cisPlatsup, e.g.
+ * Euston until boarding) is still given, marked hidden: leaving it out made clients fall back to the
+ * timetabled platform, which can be wrong.
+ */
 const platformOf = (loc: DarwinLocation | undefined): PlatformOut | null =>
-  loc?.plat && !loc.plat.suppressed ? { number: loc.plat.number, source: 'live', confirmed: loc.plat.confirmed } : null;
+  loc?.plat ? { number: loc.plat.number, source: 'live', confirmed: loc.plat.confirmed, hidden: loc.plat.suppressed } : null;
 
 const iso = (runDate: string, minutes: number | null) => (minutes === null ? null : ukIsoAt(runDate, Math.floor(minutes)));
 

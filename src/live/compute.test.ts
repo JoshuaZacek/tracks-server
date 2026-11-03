@@ -73,7 +73,7 @@ describe('computeJourneyStatus', () => {
       expectedDeparture: '2026-11-03T17:05:00+00:00',
       actualDeparture: null,
       delayMinutes: 5,
-      platform: { number: '7', source: 'live', confirmed: true },
+      platform: { number: '7', source: 'live', confirmed: true, hidden: false },
       isCancelled: false,
     });
     expect(s.progress!.stops.map((x) => x.crs)).toEqual(['KGX', 'PBO', 'YRK']);
@@ -82,9 +82,9 @@ describe('computeJourneyStatus', () => {
     expect(s.position).toBeNull();
   });
 
-  it('never shows a platform Darwin suppresses', () => {
-    const s = computeJourneyStatus(journey, darwin({ KNGX: { plat: { number: '7', confirmed: false, suppressed: true } } }), ctx('2026-11-03T16:40:00Z'));
-    expect(s.service!.platform).toBeNull();
+  it('shows a platform the station hides from its boards, marked hidden (Euston before boarding)', () => {
+    const s = computeJourneyStatus(journey, darwin({ KNGX: { plat: { number: '2', confirmed: true, suppressed: true } } }), ctx('2026-11-03T16:40:00Z'));
+    expect(s.service!.platform).toEqual({ number: '2', source: 'live', confirmed: true, hidden: true });
   });
 
   it('is departed with position anchors between a passing point and the next one', () => {
@@ -235,7 +235,7 @@ describe('departureLive and callingPointsLive', () => {
       expectedDeparture: '2026-11-03T17:04:00+00:00',
       actualDeparture: null,
       delayMinutes: 4,
-      platform: { number: '8', source: 'live', confirmed: false },
+      platform: { number: '8', source: 'live', confirmed: false, hidden: false },
       isCancelled: false,
     });
     expect(departureLive(null, 'KGX', '2026-11-03T17:00:00+00:00', '2026-11-03', crsOf)).toBeNull();

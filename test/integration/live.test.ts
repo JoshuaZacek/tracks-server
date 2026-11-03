@@ -76,7 +76,7 @@ describe('live status from Darwin', () => {
       state: 'live',
       stale: false,
       nextPollSeconds: 30,
-      service: { rid: RID, expectedDeparture: '2026-11-03T17:05:00+00:00', delayMinutes: 5, platform: { number: '7', source: 'live', confirmed: true } },
+      service: { rid: RID, expectedDeparture: '2026-11-03T17:05:00+00:00', delayMinutes: 5, platform: { number: '7', source: 'live', confirmed: true, hidden: false } },
       progress: { lastPassedIndex: -1, nextIndex: 0, arrived: false },
       position: null,
     });
@@ -125,6 +125,15 @@ describe('live status from Darwin', () => {
     status = await live(journey.id);
     expect(status).toMatchObject({ state: 'arrived', nextPollSeconds: null, position: null, progress: { arrived: true, nextIndex: null } });
     expect((await api().get('/v1/journeys?scope=past').set(auth).expect(200)).body.journeys.map((j: { id: string }) => j.id)).toEqual([journey.id]);
+  });
+
+  it('serves statuses stored before platforms had a hidden flag', async () => {
+    const journey = await save();
+    await deliver(ts([{ tpl: 'KNGX', ptd: '17:00', wtd: '17:00', dep: { et: '17:05' }, plat: { conf: 'true', '': '7' } }]));
+    // As stored by the previous version.
+    await sql`UPDATE journeys SET status = jsonb_set(status, '{service,platform}', '{"number":"7","source":"live","confirmed":true}') WHERE id = ${journey.id}`.execute(db);
+    expect((await live(journey.id)).service.platform).toEqual({ number: '7', source: 'live', confirmed: true, hidden: false });
+    expect((await api().get('/v1/journeys').set(auth).expect(200)).body.journeys[0].live.platform).toMatchObject({ hidden: false });
   });
 
   it('does not rewrite a status that has not changed (stored jsonb reorders keys)', async () => {

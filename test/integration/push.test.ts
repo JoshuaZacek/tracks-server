@@ -281,7 +281,7 @@ describe('Live Activities', () => {
       expectedArrival: null,
       actualArrival: null,
       delayMinutes: null,
-      platform: { number: '7', confirmed: false }, // timetabled until Darwin has one
+      platform: { number: '7', confirmed: false, hidden: false }, // timetabled until Darwin has one
       isCancelled: false,
       message: null,
       nextStopName: null,

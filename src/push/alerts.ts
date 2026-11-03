@@ -125,10 +125,15 @@ export function planAlerts(
   const platform = service?.platform?.number ?? null;
   if (s.state === 'live' && platform !== null && platform !== told.platform) {
     next.platform = platform;
+    const notAnnounced = service?.platform?.hidden
+      ? ', not yet announced at the station'
+      : service?.platform?.confirmed
+        ? ''
+        : ' (expected)';
     const body =
       told.platform === null
-        ? `Departs from platform ${platform}${service?.platform?.confirmed ? '' : ' (expected)'}.`
-        : `Platform change: now platform ${platform} (was ${told.platform}).`;
+        ? `Departs from platform ${platform}${notAnnounced}.`
+        : `Platform change: now platform ${platform} (was ${told.platform})${notAnnounced}.`;
     add('platform', prefs.platforms, `platform:${told.platform ?? '-'}>${platform}`, body, { collapse: true, timeSensitive: told.platform !== null });
   }
 

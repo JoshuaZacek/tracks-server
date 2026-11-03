@@ -42,8 +42,20 @@ async function readContext(deps: AppDeps): Promise<ReadContext> {
  * timetable view. `nextPollSeconds` and `stale` depend on when it is read, so
  * they are worked out here rather than stored.
  */
+/** Statuses stored before platforms had `hidden` (the next update rewrites them): fill it in on read. */
+function upgradeStored(status: LiveStatusOut | null): LiveStatusOut | null {
+  if (!status) return null;
+  type P = { hidden?: boolean } | null | undefined;
+  const fix = <T extends P>(p: T): T => (p && p.hidden === undefined ? { ...p, hidden: false } : p);
+  return {
+    ...status,
+    service: status.service ? { ...status.service, platform: fix(status.service.platform) } : null,
+    progress: status.progress ? { ...status.progress, stops: status.progress.stops.map((x) => ({ ...x, platform: fix(x.platform) })) } : null,
+  };
+}
+
 export function liveStatusOf(row: JourneyRow, rc: ReadContext): LiveStatusOut {
-  const stored = row.status as LiveStatusOut | null;
+  const stored = upgradeStored(row.status as LiveStatusOut | null);
   const base: LiveStatusOut = stored ?? {
     state: row.state,
     checkedAt: toUkIso(row.status_updated_at ?? rc.now),

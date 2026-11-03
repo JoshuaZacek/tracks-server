@@ -37,8 +37,8 @@ export interface LiveActivityContent {
   actualArrival: string | null;
   /** Departure delay until the train leaves my station, then arrival delay at my destination. */
   delayMinutes: number | null;
-  /** My boarding platform until the train leaves (live, else timetabled), then my destination's. */
-  platform: { number: string; confirmed: boolean } | null;
+  /** My boarding platform until the train leaves (live, else timetabled), then my destination's. hidden: not yet announced at the station. */
+  platform: { number: string; confirmed: boolean; hidden: boolean } | null;
   isCancelled: boolean;
   message: string | null;
   /** The next stop on my journey once under way; null before departure and after arrival. */
@@ -69,15 +69,15 @@ export function liveActivityContent(j: JourneyForActivity, s: LiveStatusOut | nu
   let platform: LiveActivityContent['platform'];
   if (underWay) {
     platform = dest?.platform
-      ? { number: dest.platform.number, confirmed: dest.platform.confirmed }
+      ? { number: dest.platform.number, confirmed: dest.platform.confirmed, hidden: dest.platform.hidden ?? false }
       : j.bookedArrivalPlatform
-        ? { number: j.bookedArrivalPlatform, confirmed: false }
+        ? { number: j.bookedArrivalPlatform, confirmed: false, hidden: false }
         : null;
   } else {
     platform = service?.platform
-      ? { number: service.platform.number, confirmed: service.platform.confirmed }
+      ? { number: service.platform.number, confirmed: service.platform.confirmed, hidden: service.platform.hidden ?? false }
       : j.bookedPlatform
-        ? { number: j.bookedPlatform, confirmed: false }
+        ? { number: j.bookedPlatform, confirmed: false, hidden: false }
         : null;
   }
 
@@ -132,6 +132,7 @@ export function isMaterialChange(before: LiveActivityContent | null, after: Live
     before.message !== after.message ||
     before.platform?.number !== after.platform?.number ||
     before.platform?.confirmed !== after.platform?.confirmed ||
+    before.platform?.hidden !== after.platform?.hidden ||
     Math.abs((after.delayMinutes ?? 0) - (before.delayMinutes ?? 0)) >= 3
   );
 }

@@ -892,12 +892,17 @@
           },
           "confirmed": {
             "type": "boolean"
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "The station hasn't announced it yet: it's hidden from the station's own departure boards, e.g. at Euston until boarding. Show it marked as not announced."
           }
         },
         "required": [
           "number",
           "source",
-          "confirmed"
+          "confirmed",
+          "hidden"
         ]
       },
       "TrainDetails": {

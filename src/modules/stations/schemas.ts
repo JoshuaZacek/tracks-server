@@ -20,6 +20,11 @@ export const Platform = z
     number: z.string().meta({ example: '4' }),
     source: z.enum(['booked', 'live']).meta({ description: 'booked: from the timetable; live: from Darwin' }),
     confirmed: z.boolean(),
+    hidden: z.boolean().meta({
+      description:
+        "The station hasn't announced it yet: it's hidden from the station's own departure boards, e.g. at Euston until " +
+        "boarding. Show it marked as not announced.",
+    }),
   })
   .meta({ id: 'Platform' });
 
