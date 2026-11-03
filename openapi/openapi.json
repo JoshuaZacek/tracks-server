@@ -264,6 +264,27 @@
               "lastMessageAt"
             ]
           },
+          "push": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "description": "APNs credentials configured; otherwise pushes are only logged (dry run)"
+              },
+              "sentLastHour": {
+                "type": "integer"
+              },
+              "failedLastHour": {
+                "type": "integer",
+                "description": "Rejected by APNs or not delivered (dead tokens excluded)"
+              }
+            },
+            "required": [
+              "enabled",
+              "sentLastHour",
+              "failedLastHour"
+            ]
+          },
           "worker": {
             "type": "object",
             "properties": {
@@ -293,6 +314,7 @@
           "stations",
           "darwin",
           "trust",
+          "push",
           "worker"
         ]
       },
@@ -455,6 +477,10 @@
             "minimum": 1,
             "maximum": 60,
             "description": "Alert when the delay reaches this many minutes"
+          },
+          "liveActivity": {
+            "type": "boolean",
+            "description": "Start a Live Activity automatically 30 minutes before departure (needs pushToStartToken)"
           }
         },
         "required": [
@@ -463,7 +489,8 @@
           "cancellations",
           "departure",
           "arrival",
-          "delayThresholdMinutes"
+          "delayThresholdMinutes",
+          "liveActivity"
         ]
       },
       "UpdateDeviceRequest": {
@@ -536,6 +563,10 @@
             "minimum": 1,
             "maximum": 60,
             "description": "Alert when the delay reaches this many minutes"
+          },
+          "liveActivity": {
+            "type": "boolean",
+            "description": "Start a Live Activity automatically 30 minutes before departure (needs pushToStartToken)"
           }
         }
       },
@@ -1206,6 +1237,9 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 60
+          },
+          "liveActivity": {
+            "type": "boolean"
           }
         }
       },
@@ -1916,6 +1950,12 @@
             ],
             "minimum": 1,
             "maximum": 60
+          },
+          "liveActivity": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         }
       },
@@ -3374,7 +3414,8 @@
       },
       "delete": {
         "operationId": "deleteJourney",
-        "summary": "Delete a journey; stops tracking and ends its Live Activity",
+        "summary": "Delete a journey and stop tracking it",
+        "description": "The server forgets any Live Activity token with it, so end the activity on the device too.",
         "tags": [
           "Journeys"
         ],
@@ -3455,7 +3496,7 @@
       "get": {
         "operationId": "getJourneyLive",
         "summary": "Just the live status of a journey",
-        "description": "Cheap to poll while the app is open: it reads stored state and never calls upstream. Respect `nextPollSeconds`. Until live tracking (Phase 4) this is the timetable view: state `scheduled`, no service/progress/position.",
+        "description": "Cheap to poll while the app is open: it reads stored state and never calls upstream. Respect `nextPollSeconds`. Without live data for the run this is the timetable view: state `scheduled`, no service/progress/position.",
         "tags": [
           "Journeys"
         ],
@@ -3542,7 +3583,8 @@
     "/v1/journeys/{id}/live-activity": {
       "put": {
         "operationId": "registerLiveActivity",
-        "summary": "Register the push token of a Live Activity the app started for this journey",
+        "summary": "Register the push token of a Live Activity for this journey",
+        "description": "Send the token from `Activity.pushTokenUpdates`, whether the app started the activity or the server did (push-to-start), and again whenever iOS rotates it. The server then pushes `TrainActivityAttributes` content updates (at most one per 15 s) and ends the activity on arrival, cancellation or not_found. Re-registering after the activity ended starts pushing again.",
         "tags": [
           "Live Activities"
         ],
@@ -3625,22 +3667,13 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Not implemented yet (`not_implemented`)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
           }
         }
       },
       "delete": {
         "operationId": "endLiveActivity",
         "summary": "The user ended the Live Activity; stop pushing to it",
+        "description": "The server will not push-to-start another one for this journey. Succeeds even if none was registered.",
         "tags": [
           "Live Activities"
         ],
@@ -3706,16 +3739,6 @@
           },
           "500": {
             "description": "Unexpected server error (`internal`)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Not implemented yet (`not_implemented`)",
             "content": {
               "application/json": {
                 "schema": {

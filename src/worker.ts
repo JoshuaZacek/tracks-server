@@ -1,14 +1,17 @@
-import { loadConfig } from './config/env.ts';
+import { readFileSync } from 'node:fs';
+import { apnsConfigured, loadConfig } from './config/env.ts';
 import { createDb } from './db/client.ts';
 import { META, setMeta } from './db/meta.ts';
 import { startDailyRefresh } from './ingest/refresh.ts';
 import { startTracking } from './live/tracking.ts';
 import { createLogger } from './logger.ts';
+import { ApnsClient } from './push/apns.ts';
+import { createNotifier } from './push/notifier.ts';
 import pg from 'pg';
 
 /**
  * Background process: the daily reference data refresh and live tracking (the
- * Darwin consumer and journey updater); Phase 5 adds the push sender. Only one may run:
+ * Darwin consumer, journey updater and push notifier). Only one may run:
  * a Postgres advisory lock held on a dedicated connection enforces that, and a
  * second worker waits until the first one exits (e.g. during a redeploy).
  */
@@ -51,8 +54,18 @@ async function main() {
   await beat();
   heartbeat = setInterval(() => void beat(), HEARTBEAT_MS);
   stopRefresh = startDailyRefresh(db, config, log);
-  stopTracking = await startTracking(db, config, log);
-  // Phase 5: hand journey status changes to the push sender.
+  stopTracking = await startTracking(db, config, log, createNotifier({ db, log, sender: apnsSender(), bundleId: config.apns.bundleId }));
+}
+
+/** The APNs client, or null for a dry run (pushes are worked out and logged but not sent). */
+function apnsSender() {
+  if (!apnsConfigured(config)) {
+    log.warn('APNs not configured (APNS_*): push dry run, recorded in push_log only');
+    return null;
+  }
+  const { keyId, teamId, keyPath, bundleId } = config.apns;
+  log.info({ keyId, teamId, bundleId }, 'APNs enabled');
+  return new ApnsClient({ keyId, teamId, key: readFileSync(keyPath, 'utf8') });
 }
 
 async function shutdown(signal: string) {

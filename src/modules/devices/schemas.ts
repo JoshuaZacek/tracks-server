@@ -9,6 +9,7 @@ export const NotificationPrefs = z
     departure: z.boolean(),
     arrival: z.boolean(),
     delayThresholdMinutes: z.number().int().min(1).max(60).meta({ description: 'Alert when the delay reaches this many minutes' }),
+    liveActivity: z.boolean().meta({ description: 'Start a Live Activity automatically 30 minutes before departure (needs pushToStartToken)' }),
   })
   .meta({ id: 'NotificationPrefs' });
 
@@ -19,6 +20,7 @@ export const DEFAULT_PREFS: z.output<typeof NotificationPrefs> = {
   departure: true,
   arrival: true,
   delayThresholdMinutes: 5,
+  liveActivity: true,
 };
 
 const ApnsEnvironment = z.enum(['sandbox', 'production']).meta({ id: 'ApnsEnvironment' });

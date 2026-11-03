@@ -1,4 +1,3 @@
-import { ApiError } from '../../http/errors.ts';
 import { defineRoute, type AnyRoute } from '../../http/route.ts';
 import {
   CreateJourneyRequest,
@@ -11,7 +10,16 @@ import {
   UpdateJourneyRequest,
 } from './schemas.ts';
 
-import { createJourney, deleteJourney, getJourney, getJourneyLive, listJourneys, updateJourney } from './service.ts';
+import {
+  createJourney,
+  deleteJourney,
+  endLiveActivity,
+  getJourney,
+  getJourneyLive,
+  listJourneys,
+  registerLiveActivity,
+  updateJourney,
+} from './service.ts';
 
 export const journeyRoutes: AnyRoute[] = [
   defineRoute({
@@ -77,7 +85,8 @@ export const journeyRoutes: AnyRoute[] = [
     method: 'delete',
     path: '/v1/journeys/{id}',
     operationId: 'deleteJourney',
-    summary: 'Delete a journey; stops tracking and ends its Live Activity',
+    summary: 'Delete a journey and stop tracking it',
+    description: 'The server forgets any Live Activity token with it, so end the activity on the device too.',
     tags: ['Journeys'],
     auth: true,
     request: { params: JourneyParams },
@@ -95,7 +104,7 @@ export const journeyRoutes: AnyRoute[] = [
     summary: 'Just the live status of a journey',
     description:
       'Cheap to poll while the app is open: it reads stored state and never calls upstream. Respect `nextPollSeconds`. ' +
-      'Until live tracking (Phase 4) this is the timetable view: state `scheduled`, no service/progress/position.',
+      'Without live data for the run this is the timetable view: state `scheduled`, no service/progress/position.',
     tags: ['Journeys'],
     auth: true,
     request: { params: JourneyParams },
@@ -107,14 +116,19 @@ export const journeyRoutes: AnyRoute[] = [
     method: 'put',
     path: '/v1/journeys/{id}/live-activity',
     operationId: 'registerLiveActivity',
-    summary: 'Register the push token of a Live Activity the app started for this journey',
+    summary: 'Register the push token of a Live Activity for this journey',
+    description:
+      'Send the token from `Activity.pushTokenUpdates`, whether the app started the activity or the server did (push-to-start), ' +
+      'and again whenever iOS rotates it. The server then pushes `TrainActivityAttributes` content updates (at most one per ' +
+      '15 s) and ends the activity on arrival, cancellation or not_found. Re-registering after the activity ended starts pushing again.',
     tags: ['Live Activities'],
     auth: true,
     request: { params: JourneyParams, body: RegisterLiveActivityRequest },
     response: { status: 204, description: 'Registered; the server will push updates to it' },
-    errors: [404, 501],
-    handler: () => {
-      throw ApiError.notImplemented('Phase 5: push');
+    errors: [404],
+    async handler({ params, body, device, deps }) {
+      await registerLiveActivity(deps, device, params.id, body.pushToken);
+      return undefined;
     },
   }),
   defineRoute({
@@ -122,13 +136,15 @@ export const journeyRoutes: AnyRoute[] = [
     path: '/v1/journeys/{id}/live-activity',
     operationId: 'endLiveActivity',
     summary: 'The user ended the Live Activity; stop pushing to it',
+    description: 'The server will not push-to-start another one for this journey. Succeeds even if none was registered.',
     tags: ['Live Activities'],
     auth: true,
     request: { params: JourneyParams },
     response: { status: 204, description: 'Stopped' },
-    errors: [404, 501],
-    handler: () => {
-      throw ApiError.notImplemented('Phase 5: push');
+    errors: [404],
+    async handler({ params, device, deps }) {
+      await endLiveActivity(deps, device, params.id);
+      return undefined;
     },
   }),
 ];

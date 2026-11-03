@@ -125,6 +125,7 @@ export const JourneyPrefs = z
     departure: z.boolean().optional(),
     arrival: z.boolean().optional(),
     delayThresholdMinutes: z.number().int().min(1).max(60).optional(),
+    liveActivity: z.boolean().optional(),
   })
   .meta({ id: 'JourneyPrefs' });
 
@@ -185,6 +186,7 @@ export const JourneyPrefsUpdate = z
     departure: z.boolean().nullable().optional(),
     arrival: z.boolean().nullable().optional(),
     delayThresholdMinutes: z.number().int().min(1).max(60).nullable().optional(),
+    liveActivity: z.boolean().nullable().optional(),
   })
   .meta({ id: 'JourneyPrefsUpdate' });
 

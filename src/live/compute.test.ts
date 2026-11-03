@@ -110,6 +110,15 @@ describe('computeJourneyStatus', () => {
     });
   });
 
+  it('gives position locations a CRS only when it is a real station (not a pseudo code like XHO)', () => {
+    const s = computeJourneyStatus(
+      journey,
+      darwin({ KNGX: { dep: { at: '17:02' } }, FNPK: { pass: { at: '17:06' } }, HLWYSJ: { pass: { et: '17:09' } } }),
+      ctx('2026-11-03T17:07:00Z', { crsOf: (t) => (t === 'HLWYSJ' ? 'XHW' : (CRS[t] ?? null)) }),
+    );
+    expect(s.position!.next).toMatchObject({ tiploc: 'HLWYSJ', crs: null, name: 'Holloway South Jn' });
+  });
+
   it('is arrived once the destination has an actual time', () => {
     const s = computeJourneyStatus(
       journey,

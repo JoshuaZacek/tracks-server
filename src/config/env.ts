@@ -40,6 +40,10 @@ const EnvSchema = z.object({
   DARWIN_KAFKA_USERNAME: z.string().default(''),
   DARWIN_KAFKA_PASSWORD: z.string().default(''),
   DARWIN_KAFKA_SASL_MECHANISM: z.enum(['plain', 'scram-sha-256', 'scram-sha-512']).default('plain'),
+  APNS_KEY_ID: z.string().default(''),
+  APNS_TEAM_ID: z.string().default(''),
+  APNS_KEY_PATH: z.string().default(''),
+  APNS_BUNDLE_ID: z.string().default(''),
 });
 
 export type Config = ReturnType<typeof loadConfig>;
@@ -76,8 +80,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
         mechanism: e.DARWIN_KAFKA_SASL_MECHANISM,
       },
     },
+    /** APNs token-based auth. Push is enabled when all four are set; otherwise pushes are only logged (dry run). */
+    apns: {
+      keyId: e.APNS_KEY_ID,
+      teamId: e.APNS_TEAM_ID,
+      keyPath: e.APNS_KEY_PATH ? path.resolve(e.APNS_KEY_PATH) : '',
+      bundleId: e.APNS_BUNDLE_ID,
+    },
   };
 }
+
+export const apnsConfigured = (config: Config) => Boolean(config.apns.keyId && config.apns.teamId && config.apns.keyPath && config.apns.bundleId);
 
 /** Every configured secret, so anything written to disk (samples, logs) can be checked for leaks. */
 export function secretsOf(config: Config): string[] {

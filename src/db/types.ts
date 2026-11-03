@@ -2,7 +2,6 @@ import type { ColumnType, Generated, Insertable, Selectable, Updateable } from '
 
 /**
  * Table types for Kysely. Keep in step with src/db/migrations/.
- * Later phases add the schedule, Darwin, journey and push tables.
  */
 export interface Database {
   meta: MetaTable;
@@ -11,6 +10,8 @@ export interface Database {
   journeys: JourneysTable;
   darwin_services: DarwinServicesTable;
   darwin_locations: DarwinLocationsTable;
+  live_activities: LiveActivitiesTable;
+  push_log: PushLogTable;
   'schedule.tiplocs': TiplocsTable;
   'schedule.schedules': SchedulesTable;
   'schedule.schedule_locations': ScheduleLocationsTable;
@@ -34,6 +35,7 @@ export interface NotificationPrefs {
   departure: boolean;
   arrival: boolean;
   delayThresholdMinutes: number;
+  liveActivity: boolean;
 }
 
 export interface DevicesTable {
@@ -128,6 +130,8 @@ export interface JourneysTable {
   /** LiveStatus (Phase 4). */
   status: ColumnType<unknown, string | null | undefined, string | null>;
   status_updated_at: Date | null;
+  /** AlertState (src/push/alerts.ts): what the user has been told; null until first seen. */
+  alert_state: ColumnType<unknown, string | null | undefined, string | null>;
   created_at: Timestamp;
   archived_at: Date | null;
 }
@@ -154,4 +158,34 @@ export interface DarwinLocationsTable {
   /** DarwinLocation (src/darwin/types.ts). */
   loc: ColumnType<unknown, string, string>;
   updated_at: Timestamp;
+}
+
+export interface LiveActivitiesTable {
+  journey_id: string;
+  /** ActivityKit update token (hex). */
+  push_token: string;
+  /** LiveActivityContent last pushed; null = push the current content at the next chance. */
+  sent_content: ColumnType<unknown, string | null | undefined, string | null>;
+  last_pushed_at: Date | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+  ended_at: Date | null;
+}
+
+export type LiveActivityRow = Selectable<LiveActivitiesTable>;
+
+export type PushOutcome = 'pending' | 'sent' | 'disabled' | 'no_token' | 'unregistered' | 'failed';
+
+export interface PushLogTable {
+  id: Generated<string>;
+  journey_id: string;
+  channel: 'alert' | 'live_activity';
+  kind: string;
+  dedupe_key: string | null;
+  payload: ColumnType<unknown, string, string>;
+  outcome: ColumnType<PushOutcome, PushOutcome | undefined, PushOutcome>;
+  http_status: number | null;
+  reason: string | null;
+  apns_id: string | null;
+  created_at: Timestamp;
 }

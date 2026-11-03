@@ -5,6 +5,7 @@ import type { FeedState } from '../../darwin/store.ts';
 import { pollSeconds } from '../../live/compute.ts';
 import { feedHealthy, feedState } from '../../live/feed.ts';
 import { updateJourneys } from '../../live/updater.ts';
+import { baselineOf } from '../../push/alerts.ts';
 import type { DeviceRow, JourneyRow } from '../../db/types.ts';
 import { operatorName } from '../../domain/operators.ts';
 import { ApiError } from '../../http/errors.ts';
@@ -205,6 +206,7 @@ export async function createJourney(deps: AppDeps, device: DeviceRow, body: z.ou
       booked_platform: from.bookedPlatform,
       calling_points: JSON.stringify(calls),
       route: JSON.stringify(train.route),
+      alert_state: JSON.stringify(baselineOf(null)),
     })
     .onConflict((oc) => oc.constraint('journeys_device_trip_key').doUpdateSet({ archived_at: null }))
     .returningAll()
@@ -220,7 +222,15 @@ export async function createJourney(deps: AppDeps, device: DeviceRow, body: z.ou
       { db: deps.db, lookups: deps.lookups, now: deps.now, darwinEnabled: true, feedHealthy: () => feedHealthy(rc.feed, rc.now.getTime()) },
       [saved],
     );
-    if (change) journey = change.journey;
+    if (change) {
+      // Alerts are for what changes after saving, not for what the user can already see.
+      journey = await deps.db
+        .updateTable('journeys')
+        .set({ alert_state: JSON.stringify(baselineOf(change.status)) })
+        .where('id', '=', saved.id)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+    }
   }
   return { journey: toJourney(journey, rc), created: inserted };
 }
@@ -251,4 +261,30 @@ export async function updateJourney(
 export async function deleteJourney(deps: AppDeps, device: DeviceRow, id: string) {
   const result = await deps.db.deleteFrom('journeys').where('id', '=', id).where('device_id', '=', device.id).executeTakeFirst();
   if (!result.numDeletedRows) throw ApiError.notFound('journey_not_found', 'No such journey');
+}
+
+/** The app started a Live Activity for this journey (or iOS rotated its token): push updates to it. */
+export async function registerLiveActivity(deps: AppDeps, device: DeviceRow, id: string, pushToken: string) {
+  const row = await findOwned(deps, device, id);
+  const token = pushToken.toLowerCase();
+  await deps.db
+    .insertInto('live_activities')
+    .values({ journey_id: row.id, push_token: token })
+    .onConflict((oc) =>
+      oc.column('journey_id').doUpdateSet({
+        push_token: token,
+        updated_at: deps.now(),
+        ended_at: null,
+        // A new activity: send it the current content at the next chance. The same one with a new token keeps its state.
+        sent_content: sql`CASE WHEN live_activities.ended_at IS NULL THEN live_activities.sent_content END`,
+        last_pushed_at: sql`CASE WHEN live_activities.ended_at IS NULL THEN live_activities.last_pushed_at END`,
+      }),
+    )
+    .execute();
+}
+
+/** The user ended the activity: stop pushing to it (and don't start it again). */
+export async function endLiveActivity(deps: AppDeps, device: DeviceRow, id: string) {
+  const row = await findOwned(deps, device, id);
+  await deps.db.updateTable('live_activities').set({ ended_at: deps.now() }).where('journey_id', '=', row.id).where('ended_at', 'is', null).execute();
 }

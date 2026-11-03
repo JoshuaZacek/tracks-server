@@ -13,11 +13,11 @@ The implementation plan, including the phases, lives in `~/.claude/plans/this-pr
 | 2 | Reference data: schedule, stations, departures, trains, places | **done** |
 | 3 | Devices and journeys | **done** |
 | 4 | Darwin ingest and live status | **done** |
-| 5 | Push: APNs alerts and Live Activities | — |
+| 5 | Push: APNs alerts and Live Activities | **done** (real-device test pending the APNs key) |
 | 6 | TRUST (optional) | — |
 | 7 | Deployment hardening | — |
 
-Every endpoint from the plan already exists with validated input and a documented response. Endpoints whose data arrives in a later phase return `501 not_implemented`.
+Every endpoint from the plan is implemented.
 
 ## Running locally
 
@@ -41,6 +41,12 @@ The worker re-imports `DATA_DIR/CIF_ALL_FULL_DAILY_toc-full.json.gz` at startup 
 ### Live data (Darwin)
 
 With `DARWIN_KAFKA_*` set, the worker consumes the Darwin Push Port topic: each batch is stored (`darwin_services`, `darwin_locations`), the journeys on the runs it touched are recomputed, and only then are offsets committed, so a restart resumes exactly where it stopped. On first start it reads everything the topic retains (~57k messages, about 20 s). A 30 s clock tick handles time-based changes (`not_found`, arrival by deactivation). The API only reads stored state; `stale` and `nextPollSeconds` are worked out when a status is read. Without Darwin, journeys show timetable data. Format notes: `docs/darwin-notes.md`.
+
+### Push (APNs)
+
+The worker's notifier turns journey changes into APNs alerts and Live Activity updates (`src/push/`). Alerts (platform, delay, cancellation, departed, approaching, arrived) are worked out against what the user has already been told (`journeys.alert_state`), so they fire on real changes only and never repeat after a restart. Live Activities get a content update when a time, platform or state changes (at most one per journey every 15 s, priority 5 for small time changes so they don't use Apple's budget), an `end` event on arrival, cancellation or not_found, and can be started by push-to-start 30 minutes before departure. Dead tokens reported by APNs are forgotten. Every push is recorded in `push_log` (kept 7 days).
+
+Set `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_KEY_PATH` (the `.p8`, outside the repo) and `APNS_BUNDLE_ID` to send. Without them the worker does a **dry run**: it works out every push and records it in `push_log` with outcome `disabled`, which is handy for checking alert rules on real trains.
 
 Or with Docker: `docker compose up --build` (Postgres, migrations, API on :3000 and the worker).
 
@@ -76,6 +82,7 @@ src/
   ingest/                schedule import (parse → COPY → swap), Knowledgebase stations, daily refresh
   darwin/                Push Port parsing, batched storage, Kafka consumer
   live/                  live status computation (pure), loading, journey updater, tracking loop
+  push/                  APNs client (node:http2), alert rules and Live Activity payloads (pure), notifier
   domain/                pure logic ported from the PoC (route points, operators, grid conversion)
 scripts/                 migrate, generate-openapi, import-schedule, import-stations, build-places, capture-darwin
 docs/                    RDM field notes and captured API samples (from the PoC)

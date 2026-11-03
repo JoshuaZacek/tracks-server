@@ -294,8 +294,9 @@ function positionOf(
   const event = reported.dep.actual !== null ? 'departure' : reported.pass.actual !== null ? 'pass' : 'arrival';
   const time = (reported.dep.actual ?? reported.pass.actual ?? reported.arr.actual)!;
   const place = (r: Resolved) => {
+    // Junctions and sidings can carry pseudo CRS codes (e.g. XHO for Holme Jn.): only real stations get one here.
     const s = r.crs ? ctx.station(r.crs) : null;
-    return { tiploc: r.loc.tpl, crs: r.crs, name: ctx.nameOf(r.loc.tpl), lat: s?.lat ?? null, lon: s?.lon ?? null };
+    return { tiploc: r.loc.tpl, crs: s ? r.crs : null, name: ctx.nameOf(r.loc.tpl), lat: s?.lat ?? null, lon: s?.lon ?? null };
   };
   const nextTime = next
     ? (next.arr.expected ?? next.pass.expected ?? next.dep.expected ?? next.arr.planned ?? next.pass.planned ?? next.dep.planned ?? next.at)

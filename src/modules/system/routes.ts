@@ -4,6 +4,7 @@ import { getMeta, META } from '../../db/meta.ts';
 import { META_KEYS } from '../../ingest/schedule/import.ts';
 import { scheduleLoaded } from '../reference.ts';
 import { darwinEnabled } from '../../app.ts';
+import { apnsConfigured } from '../../config/env.ts';
 import { readFeedState } from '../../darwin/store.ts';
 import { feedHealthy } from '../../live/feed.ts';
 import { PlacesDataset, sendPlaces } from './places.ts';
@@ -43,6 +44,11 @@ export const ServerStatus = z
       gapAt: DateTime.nullable().meta({ description: 'When messages were last missed (worker downtime past retention), within the last day' }),
     }),
     trust: z.object({ enabled: z.boolean(), lastMessageAt: DateTime.nullable() }),
+    push: z.object({
+      enabled: z.boolean().meta({ description: 'APNs credentials configured; otherwise pushes are only logged (dry run)' }),
+      sentLastHour: z.number().int(),
+      failedLastHour: z.number().int().meta({ description: 'Rejected by APNs or not delivered (dead tokens excluded)' }),
+    }),
     worker: z.object({ lastHeartbeatAt: DateTime.nullable(), healthy: z.boolean() }),
   })
   .meta({ id: 'ServerStatus' });
@@ -88,13 +94,16 @@ export const systemRoutes: AnyRoute[] = [
     auth: false,
     response: { status: 200, description: 'Status', schema: ServerStatus },
     async handler({ deps }) {
-      const [heartbeat, importedAt, generatedAt, counts, feed] = await Promise.all([
+      const [heartbeat, importedAt, generatedAt, counts, feed, pushes] = await Promise.all([
         getMeta(deps.db, META.workerHeartbeat),
         getMeta(deps.db, META_KEYS.importedAt),
         getMeta(deps.db, META_KEYS.timestamp),
         sql<{ total: number; with_coordinates: number }>`
           SELECT count(*)::int AS total, count(lat)::int AS with_coordinates FROM stations WHERE in_schedule`.execute(deps.db),
         readFeedState(deps.db),
+        sql<{ sent: number; failed: number }>`
+          SELECT count(*) FILTER (WHERE outcome = 'sent')::int AS sent, count(*) FILTER (WHERE outcome = 'failed')::int AS failed
+          FROM push_log WHERE created_at > now() - interval '1 hour'`.execute(deps.db),
       ]);
       const heartbeatAt = heartbeat ? new Date(heartbeat) : null;
       const iso = (v: string | null) => (v ? toUkIso(new Date(v)) : null);
@@ -111,6 +120,7 @@ export const systemRoutes: AnyRoute[] = [
           gapAt: feed?.gapAt ? iso(feed.gapAt) : null,
         },
         trust: { enabled: false, lastMessageAt: null },
+        push: { enabled: apnsConfigured(deps.config), sentLastHour: pushes.rows[0]!.sent, failedLastHour: pushes.rows[0]!.failed },
         worker: {
           lastHeartbeatAt: heartbeatAt ? toUkIso(heartbeatAt) : null,
           healthy: heartbeatAt !== null && Date.now() - heartbeatAt.getTime() < WORKER_STALE_MS,

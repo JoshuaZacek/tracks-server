@@ -24,7 +24,7 @@ describe('devices and auth', () => {
       pushToStartTokenRegistered: false,
       appVersion: '1.0 (1)',
       locale: 'en_GB',
-      prefs: { delays: true, platforms: true, cancellations: true, departure: true, arrival: true, delayThresholdMinutes: 5 },
+      prefs: { delays: true, platforms: true, cancellations: true, departure: true, arrival: true, delayThresholdMinutes: 5, liveActivity: true },
     });
     expect(res.body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
     expect(res.body).not.toHaveProperty('token_hash');
@@ -78,13 +78,13 @@ describe('devices and auth', () => {
   });
 });
 
-describe('endpoints from later phases', () => {
-  it('validate input before reporting not_implemented', async () => {
+describe('Live Activity registration', () => {
+  it('validates input, and treats an unknown journey as not found', async () => {
     const { auth } = await registerDevice(api);
     const bad = await api().put('/v1/journeys/not-a-uuid/live-activity').set(auth).send({ pushToken: 'ab'.repeat(32) }).expect(400);
     expect(bad.body.error.code).toBe('validation_failed');
 
-    const res = await api().put('/v1/journeys/7f1c2a52-8a43-4b8e-9d0a-3c1f9e2b6d11/live-activity').set(auth).send({ pushToken: 'ab'.repeat(32) }).expect(501);
-    expect(res.body.error).toEqual({ code: 'not_implemented', message: 'Not implemented yet (Phase 5: push)' });
+    const res = await api().put('/v1/journeys/7f1c2a52-8a43-4b8e-9d0a-3c1f9e2b6d11/live-activity').set(auth).send({ pushToken: 'ab'.repeat(32) }).expect(404);
+    expect(res.body.error.code).toBe('journey_not_found');
   });
 });
