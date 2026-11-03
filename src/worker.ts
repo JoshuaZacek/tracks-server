@@ -2,12 +2,13 @@ import { loadConfig } from './config/env.ts';
 import { createDb } from './db/client.ts';
 import { META, setMeta } from './db/meta.ts';
 import { startDailyRefresh } from './ingest/refresh.ts';
+import { startTracking } from './live/tracking.ts';
 import { createLogger } from './logger.ts';
 import pg from 'pg';
 
 /**
- * Background process: in later phases it runs the daily refresh, the Darwin and
- * TRUST consumers, the journey updater and the push sender. Only one may run:
+ * Background process: the daily reference data refresh and live tracking (the
+ * Darwin consumer and journey updater); Phase 5 adds the push sender. Only one may run:
  * a Postgres advisory lock held on a dedicated connection enforces that, and a
  * second worker waits until the first one exits (e.g. during a redeploy).
  */
@@ -23,6 +24,7 @@ const lockClient = new pg.Client({ connectionString: config.databaseUrl, applica
 let stopping = false;
 let heartbeat: NodeJS.Timeout | undefined;
 let stopRefresh: (() => void) | undefined;
+let stopTracking: (() => Promise<void>) | undefined;
 
 async function acquireLock() {
   await lockClient.connect();
@@ -49,7 +51,8 @@ async function main() {
   await beat();
   heartbeat = setInterval(() => void beat(), HEARTBEAT_MS);
   stopRefresh = startDailyRefresh(db, config, log);
-  // Phase 4+: start the Darwin consumer, journey updater and push sender here.
+  stopTracking = await startTracking(db, config, log);
+  // Phase 5: hand journey status changes to the push sender.
 }
 
 async function shutdown(signal: string) {
@@ -58,6 +61,8 @@ async function shutdown(signal: string) {
   log.info({ signal }, 'Shutting down');
   clearInterval(heartbeat);
   stopRefresh?.();
+  // Flush and commit what the Darwin consumer has, so a restart resumes exactly there.
+  await stopTracking?.().catch((err) => log.error({ err }, 'Stopping tracking failed'));
   await lockClient.end().catch(() => {}); // closing the session releases the advisory lock
   await db.destroy();
   process.exit(0);

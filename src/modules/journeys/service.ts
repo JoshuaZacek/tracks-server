@@ -1,6 +1,10 @@
 import { sql } from 'kysely';
 import type { z } from 'zod';
-import type { AppDeps } from '../../app.ts';
+import { darwinEnabled, type AppDeps } from '../../app.ts';
+import type { FeedState } from '../../darwin/store.ts';
+import { pollSeconds } from '../../live/compute.ts';
+import { feedHealthy, feedState } from '../../live/feed.ts';
+import { updateJourneys } from '../../live/updater.ts';
 import type { DeviceRow, JourneyRow } from '../../db/types.ts';
 import { operatorName } from '../../domain/operators.ts';
 import { ApiError } from '../../http/errors.ts';
@@ -20,27 +24,46 @@ const MAX_POLL_S = 3600;
 
 const clampPoll = (seconds: number) => Math.min(MAX_POLL_S, Math.max(MIN_POLL_S, Math.ceil(seconds)));
 
+/** What reading a status needs besides the row: the time, and whether live data is flowing. */
+export interface ReadContext {
+  now: Date;
+  darwinEnabled: boolean;
+  feed: FeedState | null;
+}
+
+async function readContext(deps: AppDeps): Promise<ReadContext> {
+  const enabled = darwinEnabled(deps);
+  return { now: deps.now(), darwinEnabled: enabled, feed: enabled ? await feedState(deps.db) : null };
+}
+
 /**
- * The journey's live status. Phase 4 stores real Darwin-based status on the row;
- * until then (or before Darwin knows the run) it is derived from the timetable.
+ * The journey's live status: the one live tracking stored (Phase 4), else the
+ * timetable view. `nextPollSeconds` and `stale` depend on when it is read, so
+ * they are worked out here rather than stored.
  */
-export function liveStatusOf(row: JourneyRow, now: Date): LiveStatusOut {
-  if (row.status) return row.status as LiveStatusOut;
-  const untilArrival = (row.scheduled_arrival.getTime() - now.getTime()) / 1000;
-  return {
+export function liveStatusOf(row: JourneyRow, rc: ReadContext): LiveStatusOut {
+  const stored = row.status as LiveStatusOut | null;
+  const base: LiveStatusOut = stored ?? {
     state: row.state,
-    checkedAt: toUkIso(row.status_updated_at ?? now),
-    nextPollSeconds: untilArrival > 0 ? clampPoll(untilArrival) : null,
+    checkedAt: toUkIso(row.status_updated_at ?? rc.now),
+    nextPollSeconds: null,
     stale: false,
     message: null,
     service: null,
     progress: null,
     position: null,
   };
+  const stale = rc.darwinEnabled && !feedHealthy(rc.feed, rc.now.getTime()) && ['scheduled', 'live', 'departed'].includes(base.state);
+  return {
+    ...base,
+    nextPollSeconds: pollSeconds(base.state, row.scheduled_departure, row.scheduled_arrival, rc.now),
+    stale,
+    message: stale && !base.message ? 'Live updates are paused; showing the last information received' : base.message,
+  };
 }
 
-function liveSummaryOf(row: JourneyRow, now: Date): z.input<typeof LiveSummary> {
-  const status = liveStatusOf(row, now);
+function liveSummaryOf(row: JourneyRow, rc: ReadContext): z.input<typeof LiveSummary> {
+  const status = liveStatusOf(row, rc);
   const destination = status.progress?.stops.at(-1);
   return {
     state: status.state,
@@ -77,18 +100,18 @@ function baseOf(row: JourneyRow) {
   };
 }
 
-export function toJourney(row: JourneyRow, now: Date): z.input<typeof Journey> {
+export function toJourney(row: JourneyRow, rc: ReadContext): z.input<typeof Journey> {
   return {
     ...baseOf(row),
     callingPoints: row.calling_points as CallingPointOut[],
     fromIndex: row.from_index,
     toIndex: row.to_index,
     route: row.route as z.input<typeof RoutePoint>[],
-    live: liveStatusOf(row, now),
+    live: liveStatusOf(row, rc),
   };
 }
 
-const toListItem = (row: JourneyRow, now: Date): z.input<typeof JourneyListItem> => ({ ...baseOf(row), live: liveSummaryOf(row, now) });
+const toListItem = (row: JourneyRow, rc: ReadContext): z.input<typeof JourneyListItem> => ({ ...baseOf(row), live: liveSummaryOf(row, rc) });
 
 /**
  * A journey is past once it has arrived, or once its scheduled arrival has gone
@@ -101,7 +124,8 @@ const isPast = (now: Date) => sql<boolean>`(
 )`;
 
 export async function listJourneys(deps: AppDeps, device: DeviceRow, scope: 'upcoming' | 'past', limit: number): Promise<z.input<typeof JourneyList>> {
-  const now = deps.now();
+  const rc = await readContext(deps);
+  const now = rc.now;
   let query = deps.db.selectFrom('journeys').selectAll().where('device_id', '=', device.id);
   query =
     scope === 'past'
@@ -114,13 +138,13 @@ export async function listJourneys(deps: AppDeps, device: DeviceRow, scope: 'upc
   let soonest: number | null = null;
   if (scope === 'upcoming') {
     for (const row of rows) {
-      const status = liveStatusOf(row, now);
+      const status = liveStatusOf(row, rc);
       const candidates = [status.nextPollSeconds];
       if (!(RUNNING as readonly string[]).includes(row.state)) candidates.push((row.scheduled_arrival.getTime() - now.getTime()) / 1000);
       for (const c of candidates) if (c !== null && c > 0) soonest = soonest === null ? c : Math.min(soonest, c);
     }
   }
-  return { journeys: rows.map((r) => toListItem(r, now)), nextPollSeconds: soonest === null ? null : clampPoll(soonest) };
+  return { journeys: rows.map((r) => toListItem(r, rc)), nextPollSeconds: soonest === null ? null : clampPoll(soonest) };
 }
 
 async function findOwned(deps: AppDeps, device: DeviceRow, id: string): Promise<JourneyRow> {
@@ -131,11 +155,13 @@ async function findOwned(deps: AppDeps, device: DeviceRow, id: string): Promise<
 }
 
 export async function getJourney(deps: AppDeps, device: DeviceRow, id: string) {
-  return toJourney(await findOwned(deps, device, id), deps.now());
+  const row = await findOwned(deps, device, id);
+  return toJourney(row, await readContext(deps));
 }
 
 export async function getJourneyLive(deps: AppDeps, device: DeviceRow, id: string) {
-  return liveStatusOf(await findOwned(deps, device, id), deps.now());
+  const row = await findOwned(deps, device, id);
+  return liveStatusOf(row, await readContext(deps));
 }
 
 const notOnRoute = (message: string) => new ApiError(422, 'station_not_on_route', message);
@@ -185,8 +211,18 @@ export async function createJourney(deps: AppDeps, device: DeviceRow, body: z.ou
     // xmax is 0 for a freshly inserted row and set when ON CONFLICT updated an existing one.
     .returning(sql<boolean>`(xmax = 0)`.as('inserted'))
     .executeTakeFirstOrThrow();
-  const { inserted, ...journey } = row;
-  return { journey: toJourney(journey, deps.now()), created: inserted };
+  const { inserted, ...saved } = row;
+  const rc = await readContext(deps);
+  let journey = saved;
+  // With live data, a new journey shows its live status straight away rather than at the next update.
+  if (inserted && rc.darwinEnabled) {
+    const [change] = await updateJourneys(
+      { db: deps.db, lookups: deps.lookups, now: deps.now, darwinEnabled: true, feedHealthy: () => feedHealthy(rc.feed, rc.now.getTime()) },
+      [saved],
+    );
+    if (change) journey = change.journey;
+  }
+  return { journey: toJourney(journey, rc), created: inserted };
 }
 
 export async function updateJourney(
@@ -206,9 +242,10 @@ export async function updateJourney(
     changes.prefs = JSON.stringify(prefs);
   }
   if (body.archived !== undefined) changes.archived_at = body.archived ? (row.archived_at ?? deps.now()) : null;
-  if (!Object.keys(changes).length) return toJourney(row, deps.now());
+  const rc = await readContext(deps);
+  if (!Object.keys(changes).length) return toJourney(row, rc);
   const updated = await deps.db.updateTable('journeys').set(changes).where('id', '=', row.id).returningAll().executeTakeFirstOrThrow();
-  return toJourney(updated, deps.now());
+  return toJourney(updated, rc);
 }
 
 export async function deleteJourney(deps: AppDeps, device: DeviceRow, id: string) {

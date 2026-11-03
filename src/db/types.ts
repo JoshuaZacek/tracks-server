@@ -9,6 +9,8 @@ export interface Database {
   devices: DevicesTable;
   stations: StationsTable;
   journeys: JourneysTable;
+  darwin_services: DarwinServicesTable;
+  darwin_locations: DarwinLocationsTable;
   'schedule.tiplocs': TiplocsTable;
   'schedule.schedules': SchedulesTable;
   'schedule.schedule_locations': ScheduleLocationsTable;
@@ -131,3 +133,25 @@ export interface JourneysTable {
 }
 
 export type JourneyRow = Selectable<JourneysTable>;
+
+export interface DarwinServicesTable {
+  rid: string;
+  uid: string;
+  ssd: string;
+  toc: string | null;
+  train_id: string | null;
+  cancel_reason: string | null;
+  late_reason: string | null;
+  deactivated: Generated<boolean>;
+  updated_at: Timestamp;
+}
+
+export interface DarwinLocationsTable {
+  rid: string;
+  key: string;
+  tpl: string;
+  crs: string | null;
+  /** DarwinLocation (src/darwin/types.ts). */
+  loc: ColumnType<unknown, string, string>;
+  updated_at: Timestamp;
+}

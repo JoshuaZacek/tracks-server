@@ -114,8 +114,18 @@ What this means for Phase 4:
 
 ## TRUST
 
-Darwin already forwards TRUST and TD actuals, including at passing points (`src: "TRUST"`/`"TD"`). **TRUST looks unnecessary for
-positions.** Unless Phase 4 testing shows gaps, Phase 6 (TRUST) can be dropped.
+Darwin already forwards TRUST and TD actuals, including at passing points (`src: "TRUST"`/`"TD"`). **TRUST is unnecessary for
+positions.** Phase 4 confirmed it on a real train: the Caledonian Sleeper 1S25 overnight was placed by passing points (signal
+MC863 near Kirkpatrick at 02:16, Lockerbie at 02:26) with the next location's estimate (Beattock, revised from 02:37 to 02:33).
+Recommendation: drop Phase 6.
+
+## Phase 4 observations (first live run, 3 Nov ~02:20)
+
+- First start read the whole retained backlog (~69k messages: 5.8k runs, 90k locations) in about 20 s, then kept up with
+  0.3 s lag.
+- After a graceful restart, the consumer resumed from its committed offset (about 150 messages behind), with no backlog re-read.
+- Times past midnight resolve correctly: 1S25 departed Euston 21:15 on 2 Nov, and Preston showed 00:38/00:43 on 3 Nov.
+- `jsonb` reorders object keys, so status change detection compares canonical (key-sorted) JSON.
 
 ## Open questions
 

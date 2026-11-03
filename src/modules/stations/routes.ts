@@ -1,3 +1,4 @@
+import { darwinEnabled } from '../../app.ts';
 import { defineRoute, type AnyRoute } from '../../http/route.ts';
 import { CrsParams, DeparturesQuery, DeparturesResponse, NearbyQuery, NearbyStationList, Station, StationList, StationSearchQuery } from './schemas.ts';
 import { findDepartures, getStation, nearbyStations, searchStations } from './service.ts';
@@ -57,6 +58,6 @@ export const stationRoutes: AnyRoute[] = [
     request: { params: CrsParams, query: DeparturesQuery },
     response: { status: 200, description: 'A page of departures', schema: DeparturesResponse },
     errors: [404, 503],
-    handler: ({ params, query, deps }) => findDepartures(deps.db, { ...query, from: params.crs }),
+    handler: ({ params, query, deps }) => findDepartures(deps.db, { ...query, from: params.crs }, darwinEnabled(deps) ? deps.lookups : undefined),
   }),
 ];

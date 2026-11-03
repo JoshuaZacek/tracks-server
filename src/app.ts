@@ -4,6 +4,7 @@ import { pinoHttp } from 'pino-http';
 import type { Config } from './config/env.ts';
 import type { Db } from './db/client.ts';
 import type { Logger } from './logger.ts';
+import type { Lookups } from './live/lookups.ts';
 import { createAuthenticator } from './http/middleware/auth.ts';
 import { createErrorHandler, notFoundHandler } from './http/middleware/errorHandler.ts';
 import { createGlobalLimiter, createRegistrationLimiter } from './http/middleware/rateLimit.ts';
@@ -17,7 +18,12 @@ export interface AppDeps {
   log: Logger;
   /** The current time; injectable so time-dependent behaviour can be tested. */
   now: () => Date;
+  /** TIPLOC and station lookups for live data. */
+  lookups: Lookups;
 }
+
+/** Whether this server consumes Darwin (live data); without it, journeys show timetable data. */
+export const darwinEnabled = (deps: Pick<AppDeps, 'config'>) => Boolean(deps.config.rdm.darwin.bootstrap);
 
 export function createApp(deps: AppDeps) {
   const app = express();

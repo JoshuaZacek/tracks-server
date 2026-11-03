@@ -2,11 +2,12 @@ import { createApp } from './app.ts';
 import { loadConfig } from './config/env.ts';
 import { createDb } from './db/client.ts';
 import { createLogger } from './logger.ts';
+import { Lookups } from './live/lookups.ts';
 
 const config = loadConfig();
 const log = createLogger(config, 'api');
 const db = createDb(config.databaseUrl, { applicationName: 'tracks-api' });
-const app = createApp({ config, db, log, now: () => new Date() });
+const app = createApp({ config, db, log, now: () => new Date(), lookups: new Lookups(db) });
 
 const server = app.listen(config.port, (err?: Error) => {
   if (err) {

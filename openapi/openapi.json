@@ -205,6 +205,10 @@
               "enabled": {
                 "type": "boolean"
               },
+              "healthy": {
+                "type": "boolean",
+                "description": "A message (heartbeats included) arrived in the last 5 minutes"
+              },
               "lastMessageAt": {
                 "type": [
                   "string",
@@ -218,13 +222,25 @@
                 "type": [
                   "number",
                   "null"
-                ]
+                ],
+                "description": "How far behind real time the last processed message was"
+              },
+              "gapAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "When messages were last missed (worker downtime past retention), within the last day",
+                "example": "2026-11-03T17:30:00+00:00"
               }
             },
             "required": [
               "enabled",
+              "healthy",
               "lastMessageAt",
-              "lagSeconds"
+              "lagSeconds",
+              "gapAt"
             ]
           },
           "trust": {
@@ -2038,7 +2054,7 @@
       "get": {
         "operationId": "getStatus",
         "summary": "Data freshness and background worker health",
-        "description": "Darwin and TRUST figures are filled in by the phases that add those feeds.",
+        "description": "TRUST figures are filled in if that feed is added (Phase 6).",
         "tags": [
           "System"
         ],

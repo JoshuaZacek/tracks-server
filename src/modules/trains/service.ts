@@ -3,6 +3,9 @@ import type { z } from 'zod';
 import type { Db } from '../../db/client.ts';
 import { operatorName } from '../../domain/operators.ts';
 import { routePoints } from '../../domain/route.ts';
+import { callingPointsLive } from '../../live/compute.ts';
+import { loadByTrain } from '../../live/load.ts';
+import type { Lookups } from '../../live/lookups.ts';
 import { ApiError } from '../../http/errors.ts';
 import { titleCase, type Timing } from '../../ingest/schedule/parse.ts';
 import { ukIsoAt } from '../../time.ts';
@@ -37,7 +40,7 @@ interface CallRow {
   platform: string | null;
 }
 
-export async function getTrain(db: Db, trainUid: string, runDate: string): Promise<z.input<typeof TrainDetails>> {
+export async function getTrain(db: Db, trainUid: string, runDate: string, live?: Lookups): Promise<z.input<typeof TrainDetails>> {
   await requireSchedule(db);
   const s = await winningSchedule(db, trainUid, runDate);
   if (!s) throw ApiError.notFound('train_not_running', `Train ${trainUid} does not run as a passenger train on ${runDate}`);
@@ -58,9 +61,14 @@ export async function getTrain(db: Db, trainUid: string, runDate: string): Promi
     scheduledArrival: i === 0 || r.public_arr === null ? null : ukIsoAt(runDate, r.public_arr),
     scheduledDeparture: i === rows.length - 1 || r.public_dep === null ? null : ukIsoAt(runDate, r.public_dep),
     bookedPlatform: r.platform,
-    // Darwin live data arrives in Phase 4.
-    live: null,
+    live: null as z.input<typeof TrainDetails>['callingPoints'][number]['live'],
   }));
+
+  if (live) {
+    const lookups = await live.ready();
+    const run = (await loadByTrain(db, [{ uid: trainUid, ssd: runDate }])).get(`${trainUid}|${runDate}`) ?? null;
+    callingPointsLive(run, callingPoints, runDate, lookups.crsOf).forEach((l, i) => (callingPoints[i]!.live = l));
+  }
 
   return {
     trainUid,

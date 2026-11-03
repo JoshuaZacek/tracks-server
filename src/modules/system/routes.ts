@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { getMeta, META } from '../../db/meta.ts';
 import { META_KEYS } from '../../ingest/schedule/import.ts';
 import { scheduleLoaded } from '../reference.ts';
+import { darwinEnabled } from '../../app.ts';
+import { readFeedState } from '../../darwin/store.ts';
+import { feedHealthy } from '../../live/feed.ts';
 import { PlacesDataset, sendPlaces } from './places.ts';
 import { ApiError } from '../../http/errors.ts';
 import { defineRoute, type AnyRoute } from '../../http/route.ts';
@@ -34,8 +37,10 @@ export const ServerStatus = z
     stations: z.object({ total: z.number().int(), withCoordinates: z.number().int() }),
     darwin: z.object({
       enabled: z.boolean(),
+      healthy: z.boolean().meta({ description: 'A message (heartbeats included) arrived in the last 5 minutes' }),
       lastMessageAt: DateTime.nullable(),
-      lagSeconds: z.number().nullable(),
+      lagSeconds: z.number().nullable().meta({ description: 'How far behind real time the last processed message was' }),
+      gapAt: DateTime.nullable().meta({ description: 'When messages were last missed (worker downtime past retention), within the last day' }),
     }),
     trust: z.object({ enabled: z.boolean(), lastMessageAt: DateTime.nullable() }),
     worker: z.object({ lastHeartbeatAt: DateTime.nullable(), healthy: z.boolean() }),
@@ -78,17 +83,18 @@ export const systemRoutes: AnyRoute[] = [
     path: '/v1/status',
     operationId: 'getStatus',
     summary: 'Data freshness and background worker health',
-    description: 'Darwin and TRUST figures are filled in by the phases that add those feeds.',
+    description: 'TRUST figures are filled in if that feed is added (Phase 6).',
     tags: ['System'],
     auth: false,
     response: { status: 200, description: 'Status', schema: ServerStatus },
     async handler({ deps }) {
-      const [heartbeat, importedAt, generatedAt, counts] = await Promise.all([
+      const [heartbeat, importedAt, generatedAt, counts, feed] = await Promise.all([
         getMeta(deps.db, META.workerHeartbeat),
         getMeta(deps.db, META_KEYS.importedAt),
         getMeta(deps.db, META_KEYS.timestamp),
         sql<{ total: number; with_coordinates: number }>`
           SELECT count(*)::int AS total, count(lat)::int AS with_coordinates FROM stations WHERE in_schedule`.execute(deps.db),
+        readFeedState(deps.db),
       ]);
       const heartbeatAt = heartbeat ? new Date(heartbeat) : null;
       const iso = (v: string | null) => (v ? toUkIso(new Date(v)) : null);
@@ -97,7 +103,13 @@ export const systemRoutes: AnyRoute[] = [
         serverTime: toUkIso(new Date()),
         schedule: { loaded: importedAt !== null, importedAt: iso(importedAt), generatedAt: iso(generatedAt) },
         stations: { total: counts.rows[0]!.total, withCoordinates: counts.rows[0]!.with_coordinates },
-        darwin: { enabled: false, lastMessageAt: null, lagSeconds: null },
+        darwin: {
+          enabled: darwinEnabled(deps),
+          healthy: feedHealthy(feed),
+          lastMessageAt: feed ? iso(feed.lastMessageAt) : null,
+          lagSeconds: feed?.lagSeconds ?? null,
+          gapAt: feed?.gapAt ? iso(feed.gapAt) : null,
+        },
         trust: { enabled: false, lastMessageAt: null },
         worker: {
           lastHeartbeatAt: heartbeatAt ? toUkIso(heartbeatAt) : null,

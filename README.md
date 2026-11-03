@@ -12,7 +12,7 @@ The implementation plan, including the phases, lives in `~/.claude/plans/this-pr
 | 1 | Foundation + full endpoint structure | **done** |
 | 2 | Reference data: schedule, stations, departures, trains, places | **done** |
 | 3 | Devices and journeys | **done** |
-| 4 | Darwin ingest and live status | — |
+| 4 | Darwin ingest and live status | **done** |
 | 5 | Push: APNs alerts and Live Activities | — |
 | 6 | TRUST (optional) | — |
 | 7 | Deployment hardening | — |
@@ -38,6 +38,10 @@ The worker re-imports `DATA_DIR/CIF_ALL_FULL_DAILY_toc-full.json.gz` at startup 
 
 `assets/places.json` (OS Open Names, served by `/v1/reference/places`) is committed; rebuild with `npm run build:places` (downloads ~100 MB, needs `unzip`). Contains OS data © Crown copyright and database right.
 
+### Live data (Darwin)
+
+With `DARWIN_KAFKA_*` set, the worker consumes the Darwin Push Port topic: each batch is stored (`darwin_services`, `darwin_locations`), the journeys on the runs it touched are recomputed, and only then are offsets committed, so a restart resumes exactly where it stopped. On first start it reads everything the topic retains (~57k messages, about 20 s). A 30 s clock tick handles time-based changes (`not_found`, arrival by deactivation). The API only reads stored state; `stale` and `nextPollSeconds` are worked out when a status is read. Without Darwin, journeys show timetable data. Format notes: `docs/darwin-notes.md`.
+
 Or with Docker: `docker compose up --build` (Postgres, migrations, API on :3000 and the worker).
 
 ## API
@@ -57,7 +61,7 @@ Or with Docker: `docker compose up --build` (Postgres, migrations, API on :3000 
 | GET | `/v1/reference/places` | 2 |
 | GET / POST | `/v1/journeys` | 3 |
 | GET / PATCH / DELETE | `/v1/journeys/{id}` | 3 |
-| GET | `/v1/journeys/{id}/live` | 3 (timetable only); 4 (Darwin) |
+| GET | `/v1/journeys/{id}/live` | 3 (timetable), 4 (Darwin) |
 | PUT / DELETE | `/v1/journeys/{id}/live-activity` | 5 |
 
 ## Code layout
@@ -70,6 +74,8 @@ src/
   http/                  route helper (one definition → Express route + validation + OpenAPI), errors, middleware
   modules/<resource>/    schemas.ts (zod, the API contract) and routes.ts
   ingest/                schedule import (parse → COPY → swap), Knowledgebase stations, daily refresh
+  darwin/                Push Port parsing, batched storage, Kafka consumer
+  live/                  live status computation (pure), loading, journey updater, tracking loop
   domain/                pure logic ported from the PoC (route points, operators, grid conversion)
 scripts/                 migrate, generate-openapi, import-schedule, import-stations, build-places, capture-darwin
 docs/                    RDM field notes and captured API samples (from the PoC)

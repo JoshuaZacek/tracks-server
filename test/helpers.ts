@@ -4,18 +4,24 @@ import { createApp } from '../src/app.ts';
 import { loadConfig } from '../src/config/env.ts';
 import { createDb, type Db } from '../src/db/client.ts';
 import { createLogger } from '../src/logger.ts';
+import { Lookups } from '../src/live/lookups.ts';
+import { resetFeedCache } from '../src/live/feed.ts';
 import { resetScheduleCache } from '../src/modules/reference.ts';
 
-export function createTestContext(opts: { now?: () => Date } = {}) {
+export function createTestContext(opts: { now?: () => Date; darwin?: boolean } = {}) {
   const config = loadConfig();
+  // Darwin "configured" without real credentials: the API only reads what tests write.
+  if (opts.darwin) config.rdm.darwin.bootstrap = 'test.invalid:9092';
   const db = createDb(config.databaseUrl, { max: 2 });
-  const app = createApp({ config, db, log: createLogger(config, 'test'), now: opts.now ?? (() => new Date()) });
-  return { config, db, app, api: () => request(app) };
+  const lookups = new Lookups(db);
+  const app = createApp({ config, db, log: createLogger(config, 'test'), now: opts.now ?? (() => new Date()), lookups });
+  return { config, db, app, lookups, api: () => request(app) };
 }
 
 export async function resetData(db: Db) {
-  await sql`TRUNCATE devices, journeys, meta RESTART IDENTITY CASCADE`.execute(db);
+  await sql`TRUNCATE devices, journeys, meta, darwin_services, darwin_locations RESTART IDENTITY CASCADE`.execute(db);
   resetScheduleCache();
+  resetFeedCache();
 }
 
 /** Registers a device and returns its bearer header. */

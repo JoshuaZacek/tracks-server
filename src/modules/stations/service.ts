@@ -1,6 +1,9 @@
 import { sql } from 'kysely';
 import type { z } from 'zod';
 import type { Db } from '../../db/client.ts';
+import { departureLive } from '../../live/compute.ts';
+import { loadByTrain } from '../../live/load.ts';
+import type { Lookups } from '../../live/lookups.ts';
 import { operatorName } from '../../domain/operators.ts';
 import { ApiError } from '../../http/errors.ts';
 import { titleCase } from '../../ingest/schedule/parse.ts';
@@ -103,7 +106,7 @@ export interface DeparturesQuery {
  * from 24:00 on, in that day's clock). Ordered by departure, then train UID and
  * run date, which is also what the cursor encodes.
  */
-export async function findDepartures(db: Db, q: DeparturesQuery): Promise<z.input<typeof DeparturesResponse>> {
+export async function findDepartures(db: Db, q: DeparturesQuery, live?: Lookups): Promise<z.input<typeof DeparturesResponse>> {
   await requireSchedule(db);
   const from = await getStation(db, q.from);
   const to = q.to ? await getStation(db, q.to) : null;
@@ -170,7 +173,7 @@ export async function findDepartures(db: Db, q: DeparturesQuery): Promise<z.inpu
           lon: r.dest_lon,
         },
         arrival: to && r.arr_raw !== null ? { station: to, scheduledArrival: ukIsoAt(run, r.arr_raw) } : null,
-        // Darwin live data arrives in Phase 4.
+        // Filled in below from Darwin when it has the run.
         live: null,
       });
     }
@@ -181,6 +184,14 @@ export async function findDepartures(db: Db, q: DeparturesQuery): Promise<z.inpu
   found.sort((a, b) => a.key.k - b.key.k || cmp(a.key.u, b.key.u) || cmp(a.key.r, b.key.r));
   const page = found.slice(0, q.limit);
   const last = page.at(-1);
+  if (live && page.length) {
+    // Darwin overlay: only runs Darwin knows about (roughly today and tomorrow) get one.
+    const lookups = await live.ready();
+    const runs = await loadByTrain(db, page.map((d) => ({ uid: d.trainUid, ssd: d.runDate })));
+    for (const d of page) {
+      d.live = departureLive(runs.get(`${d.trainUid}|${d.runDate}`) ?? null, from.crs, d.scheduledDeparture, d.runDate, lookups.crsOf);
+    }
+  }
   return {
     date: q.date,
     from,

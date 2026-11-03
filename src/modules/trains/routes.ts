@@ -1,3 +1,4 @@
+import { darwinEnabled } from '../../app.ts';
 import { defineRoute, type AnyRoute } from '../../http/route.ts';
 import { TrainDetails, TrainParams } from './schemas.ts';
 import { getTrain } from './service.ts';
@@ -16,6 +17,6 @@ export const trainRoutes: AnyRoute[] = [
     request: { params: TrainParams },
     response: { status: 200, description: 'The train run', schema: TrainDetails },
     errors: [404, 503],
-    handler: ({ params, deps }) => getTrain(deps.db, params.uid, params.runDate),
+    handler: ({ params, deps }) => getTrain(deps.db, params.uid, params.runDate, darwinEnabled(deps) ? deps.lookups : undefined),
   }),
 ];
