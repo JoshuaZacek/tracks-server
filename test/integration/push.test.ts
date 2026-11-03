@@ -74,8 +74,8 @@ async function deliver(...uRs: object[]) {
 }
 
 /** The consumer's record that the feed is alive (heartbeats arrive every few seconds). */
-async function feedAlive(at = clock) {
-  await recordFeed(db, { lastMessageAt: at.toISOString(), lagSeconds: 0.3, gapAt: null });
+async function feedAlive(at = clock, lagSeconds = 0.3) {
+  await recordFeed(db, { lastMessageAt: at.toISOString(), lagSeconds, gapAt: null });
   resetFeedCache();
 }
 
@@ -215,6 +215,32 @@ describe('alerts', () => {
     clock = new Date('2026-11-03T19:11:00Z');
     await deliver(ts([york({ arr: { et: '19:20' }, plat: { conf: 'true', '': '4' } })]));
     expect(alertsIn(sender.take())).toEqual(['Arriving at York at 19:20, platform 4.']);
+  });
+
+  it('holds alerts while the consumer replays a backlog, then alerts once from the latest status', async () => {
+    const journey = await save();
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' }, plat: { conf: 'true', '': '7' } })]));
+    sender.take();
+
+    // Catching up after a restart: messages from minutes ago, one estimate after another.
+    const replay = async (et: string) => {
+      const batch = new DarwinBatch();
+      batch.add(parseMessage(message(ts([kgx({ dep: { et }, plat: { conf: 'true', '': '7' } })]))), clock.getTime());
+      await flushBatch(db, batch, lookups.crsOf);
+      await feedAlive(clock, 900);
+      const changes = await updateJourneys(deps(), await journeysForRuns(db, batch.touched()));
+      notifier.journeysChanged(changes.map((c) => c.journey.id));
+      await notifier.idle();
+    };
+    await replay('17:05');
+    await replay('17:00');
+    await replay('17:15');
+    expect(sender.take()).toEqual([]);
+
+    // Caught up: the next tick looks at the held journey and says what is true now, once.
+    await tick();
+    expect(alertsIn(sender.take())).toEqual(["Delayed by 15 min: now expected to leave London Kings Cross at 17:15."]);
+    expect((await pushLog(journey.id)).filter((r) => r.channel === 'alert').map((r) => r.kind)).toEqual(['platform', 'delay']);
   });
 
   it('records alerts it cannot send: no token, or APNs not configured (dry run)', async () => {

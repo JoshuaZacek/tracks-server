@@ -137,6 +137,10 @@ Fixes:
   worker process is alive.
 - **No alerts on frozen data:** while the feed is down, alerts and Live Activity push-to-start wait. "Approaching" (a
   time rule on an estimate) also needs a Darwin message about that train within the last 15 minutes.
+- **No alerts during catch-up:** alerts also wait while the consumer is more than 60 s behind real time, i.e. while it
+  replays a backlog. On restart at 14:35 the replay produced "5 min late" and then "back on time" a second apart, from
+  estimates that were already history. Journeys skipped meanwhile are re-checked once the consumer has caught up, so
+  each gets one alert based on its latest status.
 
 Still open: backfilling the journeys being tracked (e.g. from LDBWS) after a gap longer than retention.
 

@@ -51,6 +51,8 @@ export const LIVE_ACTIVITY_MIN_INTERVAL_MS = 15_000;
 export const AUTO_START_BEFORE_MIN = 30;
 /** "Approaching" is a time rule on an estimate: only trust it if Darwin said something about the train this recently. */
 export const FRESH_RUN_MS = 15 * 60_000;
+/** The consumer counts as caught up (not replaying the past) within this many seconds of real time. */
+export const CAUGHT_UP_LAG_S = 60;
 const CONCURRENCY = 16;
 const PUSH_LOG_DAYS = 7;
 
@@ -130,18 +132,22 @@ export function createNotifier(opts: NotifierOptions) {
   const activityTopic = `${bundleId}.push-type.liveactivity`;
 
   /**
-   * Live data is flowing (or there is none to wait for). While the Darwin feed
-   * is down, statuses are frozen at the last update, so anything alerts would
-   * say could be wrong: alerts and push-to-start wait. alert_state isn't
-   * advanced meanwhile, so when data returns, alerts are worked out from fresh
-   * data (and the age limits drop ones that are no longer news).
+   * Live data is flowing and current (or there is none to wait for). While the
+   * Darwin feed is down, statuses are frozen at the last update; while the
+   * consumer is catching up after a restart, they replay the past minute by
+   * minute. Either way alerts would be wrong or stale, so alerts and
+   * push-to-start wait. The journeys skipped meanwhile are kept in `held` and
+   * looked at again once live data is current, so alerts are worked out from
+   * the latest status (and the age limits drop ones that are no longer news).
    */
   async function liveDataHealthy() {
     if (!opts.darwinEnabled) return true;
-    return feedHealthy(await feedState(db), now().getTime());
+    const feed = await feedState(db);
+    return feedHealthy(feed, now().getTime()) && feed!.lagSeconds <= CAUGHT_UP_LAG_S;
   }
 
   const pending = new Set<string>();
+  const held = new Set<string>();
   let tickDue = false;
   let running: Promise<void> | null = null;
 
@@ -257,8 +263,15 @@ export function createNotifier(opts: NotifierOptions) {
     return new Set(rows.map((r) => r.rid));
   }
 
-  async function processJourneys(ids: string[]) {
+  async function processJourneys(requested: string[]) {
     const alertsOn = await liveDataHealthy();
+    let ids = requested;
+    if (alertsOn && held.size) {
+      ids = [...new Set([...requested, ...held])];
+      held.clear();
+    } else if (!alertsOn) {
+      for (const id of requested) held.add(id);
+    }
     for (let i = 0; i < ids.length; i += 500) {
       const chunk = ids.slice(i, i + 500);
       const [journeys, activities] = await Promise.all([
