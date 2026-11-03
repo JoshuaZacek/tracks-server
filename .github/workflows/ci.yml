@@ -1,14 +1,13 @@
 # Checks every push and pull request; deploys `main` to the server once the checks pass.
 #
-# Deploying runs deploy/deploy.sh over SSH: it copies the code to the server, builds the image
-# there and restarts the stack (migrations first). The image never goes to a registry, so there
-# is no registry storage or login on the server, and the server's .env never leaves the server.
+# Deploying writes the server's configuration from repository secrets (its .env and certificate
+# files, sent over SSH), then runs deploy/deploy.sh: it copies the code to the server, builds the
+# image there and restarts the stack (migrations first). The image never goes to a registry, so
+# there is no registry storage or login on the server.
 #
-# Repository secrets (Settings → Secrets and variables → Actions), see docs/deploy.md:
-#   DEPLOY_HOST         server address (IP or name)
-#   DEPLOY_USER         SSH user on the server (in the docker group)
-#   DEPLOY_SSH_KEY      private key of a key pair made just for deploys
-#   DEPLOY_KNOWN_HOSTS  output of `ssh-keyscan <server>` (pins the server's host key)
+# GitHub (Settings → Secrets and variables → Actions) is the only source of configuration; the
+# full list is in docs/deploy.md ("Configuration"). Non-secret settings have defaults below and can
+# be overridden with repository variables of the same name.
 name: CI
 
 on:
@@ -57,11 +56,13 @@ jobs:
     timeout-minutes: 20
     environment:
       name: production
-      url: https://tracks-api.joshuazacek.com/v1/status
+      url: https://${{ vars.DOMAIN || 'tracks-api.joshuazacek.com' }}/v1/status
     # One deploy at a time; a newer push waits rather than interrupting one in progress.
     concurrency:
       group: deploy-production
       cancel-in-progress: false
+    env:
+      DOMAIN: ${{ vars.DOMAIN || 'tracks-api.joshuazacek.com' }}
     steps:
       # Until the one-time setup in docs/deploy.md is done, skip deploying instead of failing.
       - name: Check deploy settings
@@ -87,6 +88,37 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           printf 'Host *\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n  ServerAliveInterval 30\n' > ~/.ssh/config
 
+      - name: Send the configuration to the server
+        if: steps.settings.outputs.ready == 'true'
+        env:
+          # Secrets
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          KB_STATIONS_API_KEY: ${{ secrets.KB_STATIONS_API_KEY }}
+          DARWIN_KAFKA_BOOTSTRAP: ${{ secrets.DARWIN_KAFKA_BOOTSTRAP }}
+          DARWIN_KAFKA_GROUP_ID: ${{ secrets.DARWIN_KAFKA_GROUP_ID }}
+          DARWIN_KAFKA_USERNAME: ${{ secrets.DARWIN_KAFKA_USERNAME }}
+          DARWIN_KAFKA_PASSWORD: ${{ secrets.DARWIN_KAFKA_PASSWORD }}
+          NWR_SCHEDULE_URL: ${{ secrets.NWR_SCHEDULE_URL }}
+          NWR_SCHEDULE_API_KEY: ${{ secrets.NWR_SCHEDULE_API_KEY }}
+          NWR_SCHEDULE_USERNAME: ${{ secrets.NWR_SCHEDULE_USERNAME }}
+          NWR_SCHEDULE_PASSWORD: ${{ secrets.NWR_SCHEDULE_PASSWORD }}
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_KEY_P8: ${{ secrets.APNS_KEY_P8 }}
+          CF_ORIGIN_CERT: ${{ secrets.CF_ORIGIN_CERT }}
+          CF_ORIGIN_KEY: ${{ secrets.CF_ORIGIN_KEY }}
+          # Not secret: defaults, overridable with repository variables
+          CADDYFILE: ${{ vars.CADDYFILE || 'Caddyfile.cloudflare' }}
+          LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
+          SCHEDULE_REFRESH_TIME: ${{ vars.SCHEDULE_REFRESH_TIME || '04:00' }}
+          BACKUP_KEEP_DAYS: ${{ vars.BACKUP_KEEP_DAYS || '14' }}
+          RDM_AUTH_HEADER: ${{ vars.RDM_AUTH_HEADER || 'x-apikey' }}
+          KB_STATIONS_URL: ${{ vars.KB_STATIONS_URL || 'https://api1.raildata.org.uk/1010-knowlegebase-stations-xml-feed1_1/4.0/station-{CRS}.xml' }}
+          DARWIN_KAFKA_TOPIC: ${{ vars.DARWIN_KAFKA_TOPIC || 'prod-1010-Darwin-Train-Information-Push-Port-IIII2_0-JSON' }}
+          DARWIN_KAFKA_SASL_MECHANISM: ${{ vars.DARWIN_KAFKA_SASL_MECHANISM || 'plain' }}
+          APNS_TEAM_ID: ${{ vars.APNS_TEAM_ID || 'TYKCDFU4XA' }}
+          APNS_BUNDLE_ID: ${{ vars.APNS_BUNDLE_ID || 'com.joshuazacek.TrainTracker' }}
+        run: deploy/write-config.sh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
+
       - name: Deploy
         if: steps.settings.outputs.ready == 'true'
         run: deploy/deploy.sh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
@@ -95,7 +127,7 @@ jobs:
         if: steps.settings.outputs.ready == 'true'
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS --max-time 5 https://tracks-api.joshuazacek.com/health; then echo; exit 0; fi
+            if curl -fsS --max-time 5 "https://$DOMAIN/health"; then echo; exit 0; fi
             sleep 5
           done
           echo "The API did not answer within 150 s" >&2
@@ -103,4 +135,4 @@ jobs:
 
       - name: Report live-data status
         if: always() && steps.settings.outputs.ready == 'true'
-        run: curl -fsS --max-time 10 https://tracks-api.joshuazacek.com/v1/status || true
+        run: curl -fsS --max-time 10 "https://$DOMAIN/v1/status" || true

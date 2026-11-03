@@ -48,18 +48,18 @@ The record is **Proxied** (orange cloud): clients connect to Cloudflare, and Clo
 the Cloudflare dashboard for `joshuazacek.com`, in this order:
 
 1. **SSL/TLS → Origin Server → Create Certificate.** Use the defaults ("Generate private key and CSR with Cloudflare",
-   15 years) with the hostname `tracks-api.joshuazacek.com`. Save the two texts it shows, on the server:
-   - "Origin Certificate" → `~/tracks-server/secrets/cloudflare/origin.pem`
-   - "Private Key" → `~/tracks-server/secrets/cloudflare/origin-key.pem`
-   - The private key is shown only once. Keep both files `chmod 644` and owned by `deploy`: Caddy's container must be
-     able to read them, and nothing outside the server ever sees them.
+   15 years) with the hostname `tracks-api.joshuazacek.com`. Copy the two texts it shows into repository secrets:
+   - "Origin Certificate" → `CF_ORIGIN_CERT`
+   - "Private Key" → `CF_ORIGIN_KEY`
+   - The private key is shown only once. Each deploy writes both to `secrets/cloudflare/` on the server.
 2. **SSL/TLS → Overview: encryption mode "Full (strict)".** "Flexible" would talk plain HTTP to the server, which
    redirects to HTTPS, in a loop.
 3. **SSL/TLS → Origin Server → Authenticated Origin Pulls: On.** Cloudflare then presents its client certificate to the
    server. Caddy only accepts connections with that certificate (`deploy/cloudflare-origin-pull-ca.pem`, Cloudflare's
    public CA, valid until 2029), so nobody can reach the server around Cloudflare.
    - Turn this on **before** deploying: with it off, Cloudflare's requests are refused (error 525/526).
-4. In the server's `.env`, set `CADDYFILE=Caddyfile.cloudflare`.
+4. `CADDYFILE` is `Caddyfile.cloudflare` by default in the deploy workflow; set a repository variable `CADDYFILE=Caddyfile`
+   to switch to direct mode.
 
 **What this gives you:**
 - **Visitors' addresses:** Caddy passes the visitor's address from Cloudflare's `CF-Connecting-IP` header to the API.
@@ -68,38 +68,39 @@ the Cloudflare dashboard for `joshuazacek.com`, in this order:
 - **Firewall:** only 443 needs to be open, though 80 does no harm (Caddy just redirects).
 - **HTTP/3:** visitors get HTTP/3 from Cloudflare.
 
-## 3. `.env` on the server
+## 3. Configuration (GitHub secrets)
 
-The deploy script never copies `.env`: the server keeps its own. Create `~/tracks-server/.env` (`chmod 600`):
+The server's configuration lives only in GitHub, under Settings → Secrets and variables → Actions:
+- **Secrets** for anything sensitive.
+- **Variables** (optional) to override the defaults for non-secret settings.
 
-```sh
-DOMAIN=tracks-api.joshuazacek.com
-CADDYFILE=Caddyfile.cloudflare        # or Caddyfile for DNS only (see step 2)
-POSTGRES_PASSWORD=<run: openssl rand -hex 24>
-SCHEDULE_REFRESH_TIME=04:00
+Each deploy runs `deploy/write-config.sh`, which writes them to the server as `tracks-server/.env` (mode 600) plus the
+certificate and key files, over SSH. To change a setting, edit the secret and deploy again.
 
-# Rail Data Marketplace (same values as the Mac's .env)
-RDM_AUTH_HEADER=x-apikey
-KB_STATIONS_URL=...
-KB_STATIONS_API_KEY=...
-DARWIN_KAFKA_BOOTSTRAP=...
-DARWIN_KAFKA_TOPIC=prod-1010-Darwin-Train-Information-Push-Port-IIII2_0-JSON
-DARWIN_KAFKA_GROUP_ID=...
-DARWIN_KAFKA_USERNAME=...
-DARWIN_KAFKA_PASSWORD=...
-DARWIN_KAFKA_SASL_MECHANISM=plain
+**Secrets:**
 
-# Daily timetable download (see "Timetable" below); leave blank to copy the file by hand
-NWR_SCHEDULE_URL=
-NWR_SCHEDULE_USERNAME=
-NWR_SCHEDULE_PASSWORD=
+| Secret | Value | |
+|---|---|---|
+| `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` | see step 4 | required |
+| `POSTGRES_PASSWORD` | `openssl rand -hex 24`; letters, digits, `._~-` only | required, **never change it after the first deploy** (Postgres keeps the one it started with) |
+| `CF_ORIGIN_CERT`, `CF_ORIGIN_KEY` | the Cloudflare Origin Certificate and its private key (step 2), whole texts including the `-----BEGIN`/`END` lines | required behind Cloudflare |
+| `KB_STATIONS_API_KEY` | from the Mac's `.env` | for station names and coordinates |
+| `DARWIN_KAFKA_BOOTSTRAP`, `DARWIN_KAFKA_GROUP_ID`, `DARWIN_KAFKA_USERNAME`, `DARWIN_KAFKA_PASSWORD` | from the Mac's `.env` | for live data |
+| `NWR_SCHEDULE_URL` + `NWR_SCHEDULE_USERNAME`/`NWR_SCHEDULE_PASSWORD` (or `NWR_SCHEDULE_API_KEY`) | see "Timetable" | optional: daily timetable download |
+| `APNS_KEY_ID`, `APNS_KEY_P8` | the key's ID and the whole `.p8` file | optional: push |
 
-# Optional push: put AuthKey_XXXXXXXXXX.p8 in ~/tracks-server/secrets/
-APNS_KEY_ID=
-APNS_TEAM_ID=TYKCDFU4XA
-APNS_KEY_PATH=/run/secrets/AuthKey_XXXXXXXXXX.p8
-APNS_BUNDLE_ID=com.joshuazacek.TrainTracker
-```
+**Variables (defaults):**
+
+| Variable | Default |
+|---|---|
+| `DOMAIN` | `tracks-api.joshuazacek.com` |
+| `CADDYFILE` | `Caddyfile.cloudflare` |
+| `DARWIN_KAFKA_TOPIC` | `prod-1010-Darwin-Train-Information-Push-Port-IIII2_0-JSON` |
+| `DARWIN_KAFKA_SASL_MECHANISM` | `plain` |
+| `KB_STATIONS_URL` | `https://api1.raildata.org.uk/1010-knowlegebase-stations-xml-feed1_1/4.0/station-{CRS}.xml` |
+| `RDM_AUTH_HEADER` | `x-apikey` |
+| `SCHEDULE_REFRESH_TIME`, `BACKUP_KEEP_DAYS`, `LOG_LEVEL` | `04:00`, `14`, `info` |
+| `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | `TYKCDFU4XA`, `com.joshuazacek.TrainTracker` |
 
 `DATABASE_URL`, `DATA_DIR`, `PORT`, `NODE_ENV` and `TRUST_PROXY` are set by the compose file.
 
@@ -109,7 +110,8 @@ APNS_BUNDLE_ID=com.joshuazacek.TrainTracker
 ## 4. Deploy with GitHub Actions
 
 `.github/workflows/ci.yml` runs the checks (typecheck, lint, OpenAPI, the tests against a Postgres container) on every
-push and pull request. On a push to `main` that passes, it deploys with `deploy/deploy.sh`: it copies the code over SSH,
+push and pull request. On a push to `main` that passes, it writes the configuration (`deploy/write-config.sh`), then deploys
+with `deploy/deploy.sh`: it copies the code over SSH,
 builds the image on the server and restarts the stack (migrations first). A failed build leaves the running version
 alone. The job then waits for `https://tracks-api.joshuazacek.com/health`. You can also start it by hand under
 **Actions → CI → Run workflow**.
@@ -128,8 +130,8 @@ alone. The job then waits for `https://tracks-api.joshuazacek.com/health`. You c
    ssh-keygen -t ed25519 -N "" -C "tracks GitHub Actions deploy" -f ~/.ssh/tracks_deploy
    ssh-copy-id -i ~/.ssh/tracks_deploy.pub deploy@<server-ip>   # or append it to ~deploy/.ssh/authorized_keys
    ```
-3. **The `.env` from step 3**, at `/home/deploy/tracks-server/.env`, owned by `deploy`, `chmod 600`.
-4. **Repository secrets**: in GitHub under Settings → Secrets and variables → Actions, or with the `gh` CLI:
+3. **The secrets from step 3.**
+4. **The deploy secrets**: in GitHub under Settings → Secrets and variables → Actions, or with the `gh` CLI:
    ```sh
    gh secret set DEPLOY_HOST --body "<server-ip>"
    gh secret set DEPLOY_USER --body "deploy"
@@ -141,8 +143,8 @@ alone. The job then waits for `https://tracks-api.joshuazacek.com/health`. You c
 
 ### By hand
 
-The same script works from the Mac with your own SSH access: `deploy/deploy.sh deploy@<server-ip>`. It sends only what
-changed, and leaves the server's `.env`, `secrets/` and `backups/` alone. Each restart is graceful: the API drains its
+`deploy/deploy.sh deploy@<server-ip>` also works from the Mac with your own SSH access. It sends only the code, leaving
+the `.env` and `secrets/` from the last CI deploy (and `backups/`) alone. Each restart is graceful: the API drains its
 requests, and the worker commits its Darwin position.
 
 ## 5. First start
