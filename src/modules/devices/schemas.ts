@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DateTime, Uuid } from '../../http/schemas.ts';
+import { DateTime, HexToken, Uuid } from '../../http/schemas.ts';
 
 export const NotificationPrefs = z
   .object({
@@ -26,7 +26,6 @@ export const DEFAULT_PREFS: z.output<typeof NotificationPrefs> = {
 const ApnsEnvironment = z.enum(['sandbox', 'production']).meta({ id: 'ApnsEnvironment' });
 const AppVersion = z.string().trim().min(1).max(32).meta({ example: '1.0 (42)' });
 const Locale = z.string().trim().min(2).max(35).meta({ example: 'en_GB' });
-const HexToken = z.string().regex(/^[0-9a-fA-F]{32,200}$/, 'Must be a hex APNs token').toLowerCase();
 
 export const RegisterDeviceRequest = z
   .object({

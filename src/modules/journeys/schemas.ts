@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Crs, DateTime, IsoDate, Operator, TrainUid, Uuid, orNull } from '../../http/schemas.ts';
+import { Crs, DateTime, HexToken, IsoDate, Operator, TrainUid, Uuid, orNull } from '../../http/schemas.ts';
 import { Platform, Station } from '../stations/schemas.ts';
 import { CallingPoint, RoutePoint } from '../trains/schemas.ts';
 
@@ -199,7 +199,7 @@ export const UpdateJourneyRequest = z
 
 export const RegisterLiveActivityRequest = z
   .object({
-    pushToken: z.string().regex(/^[0-9a-fA-F]{32,200}$/, 'Must be the hex ActivityKit push token'),
+    pushToken: HexToken.meta({ description: 'Hex ActivityKit push token (Activity.pushTokenUpdates)' }),
   })
   .meta({ id: 'RegisterLiveActivityRequest' });
 

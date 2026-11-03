@@ -27,6 +27,16 @@ export const DateTime = z.iso
 
 export const Uuid = z.uuid();
 
+/**
+ * An APNs or ActivityKit token in hex, stored lower-case. Apple says not to
+ * assume a size: device tokens are 32 bytes today, ActivityKit tokens 128
+ * (iOS 26), so this allows up to 512 bytes.
+ */
+export const HexToken = z
+  .string()
+  .regex(/^[0-9a-fA-F]{32,1024}$/, 'Must be a hex token (32–1024 hex characters)')
+  .toLowerCase();
+
 /** Network Rail train UID from the timetable (CIF_train_uid), e.g. "C12345". */
 export const TrainUid = z
   .string()

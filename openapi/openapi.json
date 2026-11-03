@@ -501,7 +501,7 @@
               "string",
               "null"
             ],
-            "pattern": "^[0-9a-fA-F]{32,200}$",
+            "pattern": "^[0-9a-fA-F]{32,1024}$",
             "description": "Remote notification device token; null to unregister"
           },
           "apnsEnvironment": {
@@ -517,7 +517,7 @@
               "string",
               "null"
             ],
-            "pattern": "^[0-9a-fA-F]{32,200}$",
+            "pattern": "^[0-9a-fA-F]{32,1024}$",
             "description": "ActivityKit push-to-start token (iOS 17.2+); null to clear"
           },
           "appVersion": {
@@ -1964,7 +1964,8 @@
         "properties": {
           "pushToken": {
             "type": "string",
-            "pattern": "^[0-9a-fA-F]{32,200}$"
+            "pattern": "^[0-9a-fA-F]{32,1024}$",
+            "description": "Hex ActivityKit push token (Activity.pushTokenUpdates)"
           }
         },
         "required": [

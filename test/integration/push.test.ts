@@ -15,8 +15,8 @@ const FIXTURE = fileURLToPath(new URL('../fixtures/schedule-mini.ndjson', import
 const RID = '202611031234567';
 const BUNDLE = 'com.joshuazacek.TrainTracker';
 const APNS_TOKEN = 'a1'.repeat(32);
-const ACTIVITY_TOKEN = 'b2'.repeat(32);
-const START_TOKEN = 'c3'.repeat(32);
+const ACTIVITY_TOKEN = 'b2'.repeat(128); // ActivityKit tokens are 128 bytes on iOS 26
+const START_TOKEN = 'c3'.repeat(128);
 
 let clock = new Date('2026-11-03T16:40:00Z');
 const { db, api, config, lookups } = createTestContext({ now: () => clock, darwin: true });

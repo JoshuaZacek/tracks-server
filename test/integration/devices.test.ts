@@ -87,4 +87,11 @@ describe('Live Activity registration', () => {
     const res = await api().put('/v1/journeys/7f1c2a52-8a43-4b8e-9d0a-3c1f9e2b6d11/live-activity').set(auth).send({ pushToken: 'ab'.repeat(32) }).expect(404);
     expect(res.body.error.code).toBe('journey_not_found');
   });
+
+  it('accepts long tokens (ActivityKit tokens are 128 bytes on iOS 26) and rejects absurd ones', async () => {
+    const { auth } = await registerDevice(api);
+    const res = await api().patch('/v1/devices/me').set(auth).send({ pushToStartToken: 'AB'.repeat(128) }).expect(200);
+    expect(res.body.pushToStartTokenRegistered).toBe(true);
+    await api().patch('/v1/devices/me').set(auth).send({ pushToStartToken: 'ab'.repeat(513) }).expect(400);
+  });
 });
