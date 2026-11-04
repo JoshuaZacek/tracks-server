@@ -10,6 +10,7 @@ import { titleCase } from '../../ingest/schedule/parse.ts';
 import { addDays, hhmmToMinutes, ukIsoAt } from '../../time.ts';
 import { requireSchedule, runsAndWins } from '../reference.ts';
 import type { Departure, DeparturesResponse, NearbyStation, Station } from './schemas.ts';
+import { rankStations } from './search.ts';
 
 type StationOut = z.input<typeof Station>;
 
@@ -21,23 +22,11 @@ export async function getStation(db: Db, crs: string): Promise<StationOut> {
   return row;
 }
 
-/** LIKE pattern for user text: % and _ are literal. */
-const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
-
-/** Ranked: exact CRS, then name prefix, then a word in the name starting with q, then contains. */
+/** Ranked by rankStations (./search.ts): exact CRS, name prefix, all words in any order, then typos. */
 export async function searchStations(db: Db, q: string, limit: number): Promise<StationOut[]> {
-  const term = likeEscape(q);
-  const upper = q.toUpperCase();
-  const { rows } = await sql<StationOut>`
-    SELECT crs, name, lat, lon FROM stations
-    WHERE in_schedule AND (crs = ${upper} OR name ILIKE ${'%' + term + '%'})
-    ORDER BY CASE WHEN crs = ${upper} THEN 0
-                  WHEN name ILIKE ${term + '%'} THEN 1
-                  WHEN name ILIKE ${'% ' + term + '%'} OR name ILIKE ${'%(' + term + '%'} THEN 2
-                  ELSE 3 END,
-             (kb_status = 'ok') IS TRUE DESC, name
-    LIMIT ${limit}`.execute(db);
-  return rows;
+  const { rows } = await sql<StationOut & { ok: boolean }>`
+    SELECT crs, name, lat, lon, (kb_status = 'ok') IS TRUE AS ok FROM stations WHERE in_schedule`.execute(db);
+  return rankStations(rows, q, limit).map(({ ok: _ok, ...s }) => s);
 }
 
 /** Great-circle distance; ~2,600 stations, so a full scan is cheap. */

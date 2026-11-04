@@ -9,7 +9,9 @@ export const stationRoutes: AnyRoute[] = [
     path: '/v1/stations',
     operationId: 'searchStations',
     summary: 'Search stations by name or CRS code',
-    description: 'Ranked: exact CRS, then name prefix, then word prefix, then contains.',
+    description:
+      'Forgiving of punctuation ("King\'s" = "Kings", "&" = "and"), word order and, when nothing else matches, typos. ' +
+      'Ranked: exact CRS, then name prefix, then every word matched, then contains, then typos; Knowledgebase-located stations first within each.',
     tags: ['Stations'],
     auth: true,
     request: { query: StationSearchQuery },
