@@ -50,7 +50,7 @@ export class DarwinBatch {
     for (const l of p.locations) {
       const id = `${l.rid}|${l.key}`;
       const prev = this.locations.get(id);
-      this.locations.set(id, { rid: l.rid, key: l.key, loc: prev ? { ...prev.loc, ...l.loc } : l.loc });
+      this.locations.set(id, { rid: l.rid, key: l.key, loc: prev ? mergeLocation(prev.loc, l.loc) : l.loc });
     }
     for (const rid of p.deactivated) this.deactivated.add(rid);
   }
@@ -68,10 +68,25 @@ export class DarwinBatch {
 }
 
 /**
+ * A newer update to a location merged over what is known. A TS states a location's forecasts in full, so it
+ * replaces them, platform included; a schedule replaces planned fields and keeps forecasts. Once the train has
+ * actually left or reached the location, though, its platform is what happened: Darwin's report of the departure
+ * can leave the platform out, or restate it without `conf`, and that must not turn the platform the train used back
+ * into the timetabled one or unconfirm it. A different platform number still replaces it.
+ */
+export function mergeLocation(prev: DarwinLocation, next: DarwinLocation): DarwinLocation {
+  const merged = { ...prev, ...next };
+  const used = prev.plat;
+  if (used && (merged.dep?.at || merged.arr?.at)) {
+    if (!merged.plat) merged.plat = used;
+    else if (merged.plat.number === used.number && used.confirmed) merged.plat = { ...merged.plat, confirmed: true };
+  }
+  return merged;
+}
+
+/**
  * Writes a batch in one transaction with set-based upserts. Locations merge
- * into what is stored: a TS replaces a location's forecast fields (it states
- * them all, absent ones as null), a schedule replaces planned fields and keeps
- * forecasts.
+ * into what is stored by mergeLocation (read, merged here, written back).
  */
 export async function flushBatch(db: Db, batch: DarwinBatch, crsOf: (tiploc: string) => string | null) {
   if (batch.empty) return;
@@ -102,12 +117,21 @@ export async function flushBatch(db: Db, batch: DarwinBatch, crsOf: (tiploc: str
         WHERE d.rid = u.rid`.execute(trx);
     }
     if (locations.length) {
+      const { rows: stored } = await sql<{ rid: string; key: string; loc: DarwinLocation }>`
+        SELECT d.rid, d.key, d.loc FROM darwin_locations d
+        JOIN unnest(${locations.map((l) => l.rid)}::text[], ${locations.map((l) => l.key)}::text[]) AS u(rid, key) USING (rid, key)
+        FOR UPDATE OF d`.execute(trx);
+      const prev = new Map(stored.map((r) => [`${r.rid}|${r.key}`, r.loc]));
+      const merged = locations.map((l) => {
+        const before = prev.get(`${l.rid}|${l.key}`);
+        return before ? mergeLocation(before, l.loc) : l.loc;
+      });
       await sql`
         INSERT INTO darwin_locations (rid, key, tpl, crs, loc)
         SELECT * FROM unnest(${locations.map((l) => l.rid)}::text[], ${locations.map((l) => l.key)}::text[],
                              ${locations.map((l) => l.loc.tpl)}::text[], ${locations.map((l) => crsOf(l.loc.tpl))}::text[],
-                             ${locations.map((l) => JSON.stringify(l.loc))}::jsonb[])
-        ON CONFLICT (rid, key) DO UPDATE SET loc = darwin_locations.loc || excluded.loc, crs = excluded.crs, updated_at = now()`.execute(trx);
+                             ${merged.map((loc) => JSON.stringify(loc))}::jsonb[])
+        ON CONFLICT (rid, key) DO UPDATE SET loc = excluded.loc, crs = excluded.crs, updated_at = now()`.execute(trx);
     }
     if (batch.deactivated.size) {
       await sql`UPDATE darwin_services SET deactivated = true, updated_at = now() WHERE rid = ANY(${[...batch.deactivated]}::text[])`.execute(trx);

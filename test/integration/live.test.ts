@@ -117,7 +117,18 @@ describe('live status from Darwin', () => {
       },
     });
     const card = (await api().get('/v1/journeys').set(auth).expect(200)).body.journeys[0].live;
-    expect(card).toMatchObject({ state: 'departed', actualDeparture: '2026-11-03T17:04:00+00:00', expectedArrival: '2026-11-03T19:03:00+00:00' });
+    // The departure report left King's Cross's platform out: the card keeps the confirmed one the train used.
+    expect(card).toMatchObject({
+      state: 'departed',
+      actualDeparture: '2026-11-03T17:04:00+00:00',
+      expectedArrival: '2026-11-03T19:03:00+00:00',
+      platform: { number: '7', source: 'live', confirmed: true },
+    });
+    expect(status.service.platform).toMatchObject({ number: '7', confirmed: true });
+
+    // A later restatement without `conf` doesn't unconfirm it either.
+    await deliver(ts([{ tpl: 'KNGX', ptd: '17:00', wtd: '17:00', dep: { at: '17:04', src: 'TD' }, plat: { platsrc: 'A', '': '7' } }]));
+    expect((await live(journey.id)).service.platform).toMatchObject({ number: '7', confirmed: true });
 
     // Arrived at York: final, and the journey moves to past.
     clock = new Date('2026-11-03T19:04:00Z');
