@@ -13,6 +13,8 @@ export interface SearchableStation {
   name: string;
   /** Located by Knowledgebase: ranks above the rest within a tier. */
   ok: boolean;
+  /** Public calls in the timetable: busier stations first within a tier. */
+  calls: number;
 }
 
 /** Query words read as another word: "kings x" is Kings Cross, "saint" is "St". */
@@ -21,7 +23,7 @@ const QUERY_ALIASES: Record<string, string> = { x: 'cross', saint: 'st', intl: '
 export function normalise(s: string): string {
   return s
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/['’‘`.]/g, '')
     .replace(/&/g, ' and ')
@@ -32,11 +34,14 @@ export function normalise(s: string): string {
 const words = (normalised: string) => (normalised ? normalised.split(' ') : []);
 
 /**
- * Tiers, best first: exact CRS, name starts with the query, every query word
- * starts a word of the name (any order), the query appears in the name (with
- * spaces ignored from 6 letters: "kingscross", but "man" isn't in
- * "Haddenham and"). Only when none of those match anything:
- * every query word within a typo or two of a word of the name.
+ * Tiers, best first: exact CRS; the whole name; every query word starts a
+ * word of the name, in any order (a name starting with the query is just a
+ * case of this, so "King's" puts London Kings Cross above Kings Nympton);
+ * the query appears in the name (with spaces ignored from 6 letters:
+ * "kingscross", but "man" isn't in "Haddenham and"). Only when none of those
+ * match anything: every query word within a typo or two of a word of the
+ * name, fewest typos first. Within a tier, Knowledgebase-located stations
+ * first, then the busiest.
  */
 export function rankStations<T extends SearchableStation>(stations: T[], q: string, limit: number): T[] {
   const query = normalise(q);
@@ -44,34 +49,31 @@ export function rankStations<T extends SearchableStation>(stations: T[], q: stri
   const qWords = words(query).map((w) => QUERY_ALIASES[w] ?? w);
   const qCompact = query.replace(/ /g, '');
   const crs = q.trim().toUpperCase();
-
-  /** Within a tier, names that start with the first query word come first ("manchster": Manchester … before Burnley Manchester Road). */
-  const lead = (nameWords: string[], cost: (q: string, w: string) => number | null) => (cost(qWords[0]!, nameWords[0] ?? '') === null ? 1 : 0);
   const prefix = (q: string, w: string) => (w.startsWith(q) ? 0 : null);
 
-  const ranked: { s: T; tier: number; score: number }[] = [];
+  const ranked: { s: T; tier: number; edits: number }[] = [];
   const names = stations.map((s) => normalise(s.name));
   const nameWords = names.map(words);
   stations.forEach((s, i) => {
     const name = names[i]!;
     const tier =
       s.crs === crs ? 0
-      : name.startsWith(query) ? 1
-      : assign(qWords, nameWords[i]!, prefix) !== null ? 2
+      : name === query ? 1
+      : name.startsWith(query) || assign(qWords, nameWords[i]!, prefix) !== null ? 2
       : name.includes(query) || (qCompact.length >= 6 && name.replace(/ /g, '').includes(qCompact)) ? 3
       : null;
-    if (tier !== null) ranked.push({ s, tier, score: tier === 2 ? lead(nameWords[i]!, prefix) : 0 });
+    if (tier !== null) ranked.push({ s, tier, edits: 0 });
   });
 
   if (ranked.length === 0) {
     stations.forEach((s, i) => {
       const edits = assign(qWords, nameWords[i]!, typoDistance);
-      if (edits !== null) ranked.push({ s, tier: 4, score: edits * 2 + lead(nameWords[i]!, typoDistance) });
+      if (edits !== null) ranked.push({ s, tier: 4, edits });
     });
   }
 
   return ranked
-    .sort((a, b) => a.tier - b.tier || a.score - b.score || Number(b.s.ok) - Number(a.s.ok) || a.s.name.localeCompare(b.s.name))
+    .sort((a, b) => a.tier - b.tier || a.edits - b.edits || Number(b.s.ok) - Number(a.s.ok) || b.s.calls - a.s.calls || a.s.name.localeCompare(b.s.name))
     .slice(0, limit)
     .map((r) => r.s);
 }

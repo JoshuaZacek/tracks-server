@@ -65,6 +65,8 @@ export interface StationsTable {
   kb_status: 'ok' | 'not_found' | null;
   fetched_at: Date | null;
   in_schedule: Generated<boolean>;
+  /** Public calls in the imported timetable: how busy the station is. */
+  calls: Generated<number>;
 }
 
 export interface TiplocsTable {

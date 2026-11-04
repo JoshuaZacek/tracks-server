@@ -2,22 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { editDistance, normalise, rankStations, type SearchableStation } from './search.ts';
 
 const stations: SearchableStation[] = [
-  { crs: 'KGX', name: 'London Kings Cross', ok: true },
-  { crs: 'STP', name: 'London St Pancras International', ok: true },
-  { crs: 'KLN', name: 'Kings Lynn', ok: true },
-  { crs: 'KGL', name: 'Kings Langley', ok: true },
-  { crs: 'EDB', name: 'Edinburgh', ok: true },
-  { crs: 'EBR', name: 'Edenbridge (Kent)', ok: true },
-  { crs: 'SOT', name: 'Stoke-on-Trent', ok: true },
-  { crs: 'HDM', name: 'Haddenham & Thame Parkway', ok: true },
-  { crs: 'WMW', name: "Walthamstow Queen's Road", ok: true },
-  { crs: 'LEU', name: 'Leuchars (for St. Andrews)', ok: true },
-  { crs: 'MAN', name: 'Manchester Piccadilly', ok: true },
-  { crs: 'BYM', name: 'Burnley Manchester Road', ok: true },
-  { crs: 'YRK', name: 'York', ok: true },
-  { crs: 'BYK', name: 'Bentley (South Yorkshire)', ok: true },
-  { crs: 'ZKB', name: 'Barking L.t.', ok: false },
-  { crs: 'BKG', name: 'Barking', ok: true },
+  { crs: 'KGX', name: 'London Kings Cross', ok: true, calls: 7548 },
+  { crs: 'STP', name: 'London St Pancras International', ok: true, calls: 3925 },
+  { crs: 'KLN', name: 'Kings Lynn', ok: true, calls: 700 },
+  { crs: 'KGL', name: 'Kings Langley', ok: true, calls: 1385 },
+  { crs: 'EDB', name: 'Edinburgh', ok: true, calls: 8611 },
+  { crs: 'EBR', name: 'Edenbridge (Kent)', ok: true, calls: 300 },
+  { crs: 'SOT', name: 'Stoke-on-Trent', ok: true, calls: 4000 },
+  { crs: 'HDM', name: 'Haddenham & Thame Parkway', ok: true, calls: 900 },
+  { crs: 'WMW', name: "Walthamstow Queen's Road", ok: true, calls: 800 },
+  { crs: 'LEU', name: 'Leuchars (for St. Andrews)', ok: true, calls: 600 },
+  { crs: 'MAN', name: 'Manchester Piccadilly', ok: true, calls: 20000 },
+  { crs: 'BYM', name: 'Burnley Manchester Road', ok: true, calls: 150 },
+  { crs: 'YRK', name: 'York', ok: true, calls: 9000 },
+  { crs: 'BYK', name: 'Bentley (South Yorkshire)', ok: true, calls: 400 },
+  { crs: 'ZKB', name: 'Barking L.t.', ok: false, calls: 0 },
+  { crs: 'BKG', name: 'Barking', ok: true, calls: 6000 },
+  { crs: 'KNM', name: 'Kings Nympton', ok: true, calls: 40 },
+  { crs: 'KGM', name: 'Kingsknowe', ok: true, calls: 90 },
 ];
 const search = (q: string, limit = 15) => rankStations(stations, q, limit).map((s) => s.crs);
 
@@ -34,7 +36,7 @@ describe('normalise', () => {
 
 describe('rankStations', () => {
   it('ignores punctuation on both sides', () => {
-    expect(search("King's")).toEqual(['KGL', 'KLN', 'KGX']);
+    expect(search("King's")).toEqual(['KGX', 'KGL', 'KLN', 'KGM', 'KNM']);
     expect(search('kings lynn')).toEqual(['KLN']);
     expect(search("king's cross")).toEqual(['KGX']);
     expect(search('queens road')).toEqual(['WMW']);
@@ -67,12 +69,16 @@ describe('rankStations', () => {
     expect(search('edinburgh')).toEqual(['EDB']);
   });
 
-  it('ranks exact CRS, then name prefix, then all words, Knowledgebase-located first within a tier', () => {
+  it('ranks exact CRS, the whole name, then all words with the busiest first, Knowledgebase-located first within a tier', () => {
     expect(search('york')).toEqual(['YRK', 'BYK']);
     expect(search('man')).toEqual(['MAN', 'BYM']);
     expect(search('barking')).toEqual(['BKG', 'ZKB']);
     expect(search('kgx')).toEqual(['KGX']);
-    expect(search('kings', 2)).toEqual(['KGL', 'KLN']);
+    // A name starting with the query doesn't beat a busier station with the word later on.
+    expect(search('kings', 2)).toEqual(['KGX', 'KGL']);
+    expect(search('london')).toEqual(['KGX', 'STP']);
+    // The whole name beats a busier station that only starts with it.
+    expect(rankStations([...stations, { crs: 'XYS', name: 'Yorkshire Central', ok: true, calls: 99999 }], 'york', 3).map((s) => s.crs)).toEqual(['YRK', 'XYS', 'BYK']);
   });
 
   it('returns nothing for a query that is only punctuation', () => {

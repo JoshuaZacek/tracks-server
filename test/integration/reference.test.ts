@@ -54,6 +54,14 @@ describe('with the fixture timetable', () => {
     await api().get('/ready').expect(200);
   });
 
+  it('counts each station\'s public calls, for ranking search results', async () => {
+    const rows = await db.selectFrom('stations').select(['crs', 'calls']).where('in_schedule', '=', true).execute();
+    const { rows: counted } = await sql<{ crs: string; n: number }>`
+      SELECT crs, count(*)::int AS n FROM schedule.schedule_locations WHERE crs IS NOT NULL GROUP BY crs`.execute(db);
+    expect(Object.fromEntries(rows.map((r) => [r.crs, r.calls]))).toEqual(Object.fromEntries(counted.map((r) => [r.crs, r.n])));
+    expect(rows.every((r) => r.calls > 0)).toBe(true);
+  });
+
   describe('stations', () => {
     it('searches by name and by CRS code, exact CRS first, Knowledgebase-located stations before others', async () => {
       const york = (await get('/v1/stations?q=york').expect(200)).body.stations;

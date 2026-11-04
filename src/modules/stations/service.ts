@@ -22,11 +22,11 @@ export async function getStation(db: Db, crs: string): Promise<StationOut> {
   return row;
 }
 
-/** Ranked by rankStations (./search.ts): exact CRS, name prefix, all words in any order, then typos. */
+/** Ranked by rankStations (./search.ts): exact CRS, exact name, all words in any order (busiest first), then typos. */
 export async function searchStations(db: Db, q: string, limit: number): Promise<StationOut[]> {
-  const { rows } = await sql<StationOut & { ok: boolean }>`
-    SELECT crs, name, lat, lon, (kb_status = 'ok') IS TRUE AS ok FROM stations WHERE in_schedule`.execute(db);
-  return rankStations(rows, q, limit).map(({ ok: _ok, ...s }) => s);
+  const { rows } = await sql<StationOut & { ok: boolean; calls: number }>`
+    SELECT crs, name, lat, lon, (kb_status = 'ok') IS TRUE AS ok, calls FROM stations WHERE in_schedule`.execute(db);
+  return rankStations(rows, q, limit).map(({ ok: _ok, calls: _calls, ...s }) => s);
 }
 
 /** Great-circle distance; ~2,600 stations, so a full scan is cheap. */

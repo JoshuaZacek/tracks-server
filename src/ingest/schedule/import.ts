@@ -165,8 +165,8 @@ export async function importSchedule(databaseUrl: string, file: string, log: Log
 
     // Every CRS with passenger calls gets a station row. Knowledgebase fills in the real name and
     // coordinates later; until then the name comes from the schedule's own TIPLOC record.
-    const { rows: called } = await control.query<{ crs: string }>(
-      `SELECT DISTINCT crs FROM ${STAGING_SCHEMA}.schedule_locations WHERE crs IS NOT NULL`,
+    const { rows: called } = await control.query<{ crs: string; calls: number }>(
+      `SELECT crs, count(*)::int AS calls FROM ${STAGING_SCHEMA}.schedule_locations WHERE crs IS NOT NULL GROUP BY crs`,
     );
     const nameOf = new Map<string, string>();
     for (const t of tiplocs) if (t.crsSource === 'schedule' && t.crs) nameOf.set(t.crs, titleCase(t.name));
@@ -181,13 +181,13 @@ export async function importSchedule(databaseUrl: string, file: string, log: Log
       const { rowCount } = await control.query('SELECT 1 FROM pg_namespace WHERE nspname = $1', [SCHEDULE_SCHEMA]);
       if (rowCount) await control.query(`ALTER SCHEMA ${SCHEDULE_SCHEMA} RENAME TO ${OLD_SCHEMA}`);
       await control.query(`ALTER SCHEMA ${STAGING_SCHEMA} RENAME TO ${SCHEDULE_SCHEMA}`);
-      await control.query('UPDATE stations SET in_schedule = false WHERE in_schedule');
+      await control.query('UPDATE stations SET in_schedule = false, calls = 0 WHERE in_schedule OR calls > 0');
       await control.query(
-        `INSERT INTO stations (crs, name, in_schedule)
-         SELECT crs, name, true FROM unnest($1::text[], $2::text[]) AS s(crs, name)
-         ON CONFLICT (crs) DO UPDATE SET in_schedule = true,
+        `INSERT INTO stations (crs, name, in_schedule, calls)
+         SELECT crs, name, true, calls FROM unnest($1::text[], $2::text[], $3::int[]) AS s(crs, name, calls)
+         ON CONFLICT (crs) DO UPDATE SET in_schedule = true, calls = excluded.calls,
            name = CASE WHEN stations.kb_status = 'ok' THEN stations.name ELSE excluded.name END`,
-        [codes, names],
+        [codes, names, called.map((r) => r.calls)],
       );
       const meta: [string, string][] = [
         [META_KEYS.importedAt, new Date().toISOString()],
