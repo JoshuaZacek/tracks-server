@@ -22,8 +22,8 @@ export const Platform = z
     confirmed: z.boolean(),
     hidden: z.boolean().meta({
       description:
-        "The station hasn't announced it yet: it's hidden from the station's own departure boards, e.g. at Euston until " +
-        "boarding. Show it marked as not announced.",
+        "The station keeps it off its own departure boards for now, e.g. at Euston until boarding. Informational: " +
+        "show the platform as confirmed or predicted by `confirmed` alone.",
     }),
   })
   .meta({ id: 'Platform' });

@@ -37,7 +37,7 @@ export interface LiveActivityContent {
   actualArrival: string | null;
   /** Departure delay until the train leaves my station, then arrival delay at my destination. */
   delayMinutes: number | null;
-  /** My boarding platform until the train leaves (live, else timetabled), then my destination's. hidden: not yet announced at the station. */
+  /** My boarding platform until the train leaves (live, else timetabled), then my destination's. The app shows it as confirmed or predicted; hidden isn't shown. */
   platform: { number: string; confirmed: boolean; hidden: boolean } | null;
   isCancelled: boolean;
   message: string | null;
@@ -132,7 +132,6 @@ export function isMaterialChange(before: LiveActivityContent | null, after: Live
     before.message !== after.message ||
     before.platform?.number !== after.platform?.number ||
     before.platform?.confirmed !== after.platform?.confirmed ||
-    before.platform?.hidden !== after.platform?.hidden ||
     Math.abs((after.delayMinutes ?? 0) - (before.delayMinutes ?? 0)) >= 3
   );
 }

@@ -102,11 +102,9 @@ describe('planAlerts', () => {
     expect(plan(change.next, status({ platform: '9', confirmed: true })).alerts).toEqual([]);
   });
 
-  it('marks an unconfirmed platform as expected, and one the station hides as not yet announced', () => {
-    expect(bodies(plan(quiet, status({ platform: '2' })))).toEqual(['platform: Departs from platform 2 (expected).']);
-    expect(bodies(plan(quiet, status({ platform: '2', confirmed: true, hidden: true })))).toEqual([
-      'platform: Departs from platform 2, not yet announced at the station.',
-    ]);
+  it('marks an unconfirmed platform as predicted; a confirmed one the station hides is just confirmed', () => {
+    expect(bodies(plan(quiet, status({ platform: '2' })))).toEqual(['platform: Departs from platform 2 (predicted).']);
+    expect(bodies(plan(quiet, status({ platform: '2', confirmed: true, hidden: true })))).toEqual(['platform: Departs from platform 2.']);
   });
 
   it('alerts on reaching the delay threshold, on 5+ minute moves, and on recovery, not on small drift', () => {
