@@ -35,8 +35,9 @@ const STARTUP_DOWNLOAD_AGE_MS = 26 * 3600_000;
  * 2. Import it if it's newer than the last import (or nothing is imported yet), in a
  *    child process so the worker's other jobs keep running.
  * 3. Re-fetch Knowledgebase stations older than a week.
+ * 4. `afterRefresh` (the worker makes regular journeys' journeys for today and tomorrow).
  */
-export function startDailyRefresh(db: Db, config: Config, log: Logger) {
+export function startDailyRefresh(db: Db, config: Config, log: Logger, afterRefresh?: () => Promise<unknown>) {
   let timer: NodeJS.Timeout | undefined;
   let stopped = false;
   let retries = 0;
@@ -45,7 +46,7 @@ export function startDailyRefresh(db: Db, config: Config, log: Logger) {
     if (result.downloadFailed && retries < RETRIES) {
       retries++;
       log.warn({ retry: retries, of: RETRIES, inMinutes: RETRY_MS / 60_000 }, 'Refresh: timetable download will be retried');
-      timer = setTimeout(() => void runRefresh(db, config, log, true).then(after), RETRY_MS);
+      timer = setTimeout(() => void runRefresh(db, config, log, true, afterRefresh).then(after), RETRY_MS);
       return;
     }
     retries = 0;
@@ -54,12 +55,12 @@ export function startDailyRefresh(db: Db, config: Config, log: Logger) {
     next.setHours(h, m, 0, 0); // process TZ is Europe/London (config/env.ts)
     if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
     log.info({ next: next.toISOString() }, 'Next reference data refresh scheduled');
-    timer = setTimeout(() => void runRefresh(db, config, log, true).then(after), next.getTime() - Date.now());
+    timer = setTimeout(() => void runRefresh(db, config, log, true, afterRefresh).then(after), next.getTime() - Date.now());
   };
   // By the generation time inside the timetable, not the file's date (a file copied in by hand is "new" on disk).
   void startupNeedsDownload(db)
     .catch(() => true)
-    .then((download) => runRefresh(db, config, log, download))
+    .then((download) => runRefresh(db, config, log, download, afterRefresh))
     .then(after);
   return () => {
     stopped = true;
@@ -78,7 +79,13 @@ export interface RefreshResult {
 
 let refreshing = false;
 
-export async function runRefresh(db: Db, config: Config, log: Logger, download: boolean): Promise<RefreshResult> {
+export async function runRefresh(
+  db: Db,
+  config: Config,
+  log: Logger,
+  download: boolean,
+  afterRefresh?: () => Promise<unknown>,
+): Promise<RefreshResult> {
   if (refreshing) return { downloadFailed: false };
   refreshing = true;
   let downloadFailed = false;
@@ -100,6 +107,12 @@ export async function runRefresh(db: Db, config: Config, log: Logger, download: 
     await refreshStations(db, config, (msg) => log.info(msg));
   } catch (err) {
     log.error({ err }, 'Refresh failed');
+  }
+  try {
+    // After the import, so tomorrow's journeys are matched against the new timetable.
+    await afterRefresh?.();
+  } catch (err) {
+    log.error({ err }, 'Refresh: follow-up failed');
   } finally {
     refreshing = false;
   }

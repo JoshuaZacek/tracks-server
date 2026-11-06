@@ -486,6 +486,14 @@
           "liveActivity": {
             "type": "boolean",
             "description": "Start a Live Activity automatically 30 minutes before departure (needs pushToStartToken)"
+          },
+          "morningSummary": {
+            "type": "boolean",
+            "description": "Regular journeys: a summary of the train's status at the template's summaryTime (kind morning_summary)"
+          },
+          "leaveNow": {
+            "type": "boolean",
+            "description": "Journeys with travelMinutes: an alert when it is time to leave for the station, moved later if the train runs late (kind leave_now)"
           }
         },
         "required": [
@@ -495,7 +503,9 @@
           "departure",
           "arrival",
           "delayThresholdMinutes",
-          "liveActivity"
+          "liveActivity",
+          "morningSummary",
+          "leaveNow"
         ]
       },
       "UpdateDeviceRequest": {
@@ -572,6 +582,14 @@
           "liveActivity": {
             "type": "boolean",
             "description": "Start a Live Activity automatically 30 minutes before departure (needs pushToStartToken)"
+          },
+          "morningSummary": {
+            "type": "boolean",
+            "description": "Regular journeys: a summary of the train's status at the template's summaryTime (kind morning_summary)"
+          },
+          "leaveNow": {
+            "type": "boolean",
+            "description": "Journeys with travelMinutes: an alert when it is time to leave for the station, moved later if the train runs late (kind leave_now)"
           }
         }
       },
@@ -1188,6 +1206,23 @@
           "prefs": {
             "$ref": "#/components/schemas/JourneyPrefs"
           },
+          "templateId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The regular journey this was made from; null when saved by hand or no longer repeating"
+          },
+          "travelMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 240,
+            "description": "Minutes to get to the boarding station (for the leave_now alert)"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1220,6 +1255,8 @@
           "scheduledArrival",
           "bookedPlatform",
           "prefs",
+          "templateId",
+          "travelMinutes",
           "createdAt",
           "archivedAt",
           "live"
@@ -1249,6 +1286,16 @@
             "maximum": 60
           },
           "liveActivity": {
+            "type": "boolean"
+          },
+          "stopAlarm": {
+            "type": "boolean",
+            "description": "Wake me before my stop: the app schedules an alarm before arrival at my destination, and the server sends a background push (kind stop_alarm) when that arrival moves by 2+ min or is cancelled. Journey-only; absent = off"
+          },
+          "morningSummary": {
+            "type": "boolean"
+          },
+          "leaveNow": {
             "type": "boolean"
           }
         }
@@ -1411,6 +1458,23 @@
           "prefs": {
             "$ref": "#/components/schemas/JourneyPrefs"
           },
+          "templateId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The regular journey this was made from; null when saved by hand or no longer repeating"
+          },
+          "travelMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 240,
+            "description": "Minutes to get to the boarding station (for the leave_now alert)"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1466,6 +1530,8 @@
           "scheduledArrival",
           "bookedPlatform",
           "prefs",
+          "templateId",
+          "travelMinutes",
           "createdAt",
           "archivedAt",
           "callingPoints",
@@ -1917,6 +1983,15 @@
           "archived": {
             "type": "boolean",
             "description": "true moves the journey to past; false brings it back"
+          },
+          "travelMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 240,
+            "description": "Minutes to get to the boarding station; null clears it"
           }
         }
       },
@@ -1966,6 +2041,24 @@
               "boolean",
               "null"
             ]
+          },
+          "stopAlarm": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "morningSummary": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "leaveNow": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         }
       },
@@ -1981,6 +2074,284 @@
         "required": [
           "pushToken"
         ]
+      },
+      "JourneyTemplateList": {
+        "type": "object",
+        "properties": {
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JourneyTemplate"
+            }
+          }
+        },
+        "required": [
+          "templates"
+        ]
+      },
+      "JourneyTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "to": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "departTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Departure from the boarding station (HH:MM, UK local)",
+            "example": "07:42"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "description": "ISO weekdays (1 = Monday … 7 = Sunday), sorted, unique, at least one"
+          },
+          "trainUid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "The train last matched: a hint only, since UIDs change with the timetable",
+            "example": "L12345"
+          },
+          "travelMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 240,
+            "description": "Minutes to get to the boarding station (for the leave_now alert)"
+          },
+          "summaryTime": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "When to send the morning summary (HH:MM); null = no summary",
+            "example": "06:45"
+          },
+          "prefs": {
+            "$ref": "#/components/schemas/JourneyPrefs"
+          },
+          "problem": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date",
+                "description": "Calendar date (YYYY-MM-DD), UK local",
+                "example": "2026-11-03"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "date",
+              "message"
+            ],
+            "description": "No train matched on `date` (e.g. after a timetable change); cleared at the next match"
+          },
+          "nextJourney": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "date": {
+                "type": "string",
+                "format": "date",
+                "description": "Calendar date (YYYY-MM-DD), UK local",
+                "example": "2026-11-03"
+              },
+              "scheduledDeparture": {
+                "type": "string",
+                "format": "date-time",
+                "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+                "example": "2026-11-03T17:30:00+00:00"
+              }
+            },
+            "required": [
+              "id",
+              "date",
+              "scheduledDeparture"
+            ],
+            "description": "The soonest upcoming journey made from it"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "id",
+          "from",
+          "to",
+          "departTime",
+          "days",
+          "trainUid",
+          "travelMinutes",
+          "summaryTime",
+          "prefs",
+          "problem",
+          "nextJourney",
+          "createdAt"
+        ]
+      },
+      "CreateJourneyTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "fromCrs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "toCrs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "departTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Departure from the boarding station (HH:MM, UK local)",
+            "example": "07:42"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "ISO weekdays: 1 = Monday … 7 = Sunday",
+            "example": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "trainUid": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "Timetable train UID (CIF_train_uid)",
+            "example": "L12345"
+          },
+          "travelMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 240,
+            "description": "Minutes to get to the boarding station (for the leave_now alert)"
+          },
+          "summaryTime": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "When to send the morning summary on the day (HH:MM, UK local)",
+            "example": "06:45"
+          },
+          "prefs": {
+            "$ref": "#/components/schemas/JourneyPrefs"
+          },
+          "journeyId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A journey of this device to repeat: it is linked to the template, its date counts as made, and its trainUid, travelMinutes and prefs are the defaults for fields left out"
+          }
+        },
+        "required": [
+          "fromCrs",
+          "toCrs",
+          "departTime",
+          "days"
+        ]
+      },
+      "UpdateJourneyTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "departTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Departure from the boarding station (HH:MM, UK local)",
+            "example": "07:42"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 7
+            },
+            "minItems": 1,
+            "maxItems": 7,
+            "description": "ISO weekdays: 1 = Monday … 7 = Sunday",
+            "example": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          "travelMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 240,
+            "description": "Minutes to get to the boarding station (for the leave_now alert)"
+          },
+          "summaryTime": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "When to send the morning summary on the day (HH:MM, UK local)",
+            "example": "06:45"
+          },
+          "prefs": {
+            "$ref": "#/components/schemas/JourneyPrefsUpdate"
+          }
+        }
       }
     },
     "parameters": {}
@@ -3707,6 +4078,345 @@
         "responses": {
           "204": {
             "description": "Stopped"
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journey-templates": {
+      "get": {
+        "operationId": "listJourneyTemplates",
+        "summary": "This device's regular journeys",
+        "description": "Ordered by departTime. `problem` is set when no train matched a date; `nextJourney` is the soonest upcoming journey made from each.",
+        "tags": [
+          "Regular journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Regular journeys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyTemplateList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createJourneyTemplate",
+        "summary": "Repeat a journey on certain weekdays",
+        "description": "The server makes a journey for today (while the time is ahead) and tomorrow on each chosen weekday, on the timetabled train from `fromCrs` calling at `toCrs` nearest `departTime` (within 30 min), and does so straight away for this one. With `journeyId`, that journey is linked and its date counts as made. A journey deleted later is not made again. 404 for an unknown station or journey; 422 when fromCrs equals toCrs.",
+        "tags": [
+          "Regular journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJourneyTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The regular journey, with its next journey",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journey-templates/{id}": {
+      "patch": {
+        "operationId": "updateJourneyTemplate",
+        "summary": "Change a regular journey",
+        "description": "New times or days apply to journeys made from now on, not to ones already made. `prefs` is merged like a journey’s.",
+        "tags": [
+          "Regular journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateJourneyTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated regular journey",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteJourneyTemplate",
+        "summary": "Stop repeating",
+        "description": "Journeys already made stay (their templateId becomes null); delete them separately if wanted.",
+        "tags": [
+          "Regular journeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
           },
           "400": {
             "description": "The request is not valid (`validation_failed`, `invalid_json`)",

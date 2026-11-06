@@ -3,7 +3,9 @@ import { apnsConfigured, loadConfig } from './config/env.ts';
 import { createDb } from './db/client.ts';
 import { META, setMeta } from './db/meta.ts';
 import { startDailyRefresh } from './ingest/refresh.ts';
+import { Lookups } from './live/lookups.ts';
 import { startTracking } from './live/tracking.ts';
+import { materialiseTemplates } from './modules/journey-templates/service.ts';
 import { createLogger } from './logger.ts';
 import { ApnsClient } from './push/apns.ts';
 import { createNotifier } from './push/notifier.ts';
@@ -53,14 +55,17 @@ async function main() {
   log.info('Worker started');
   await beat();
   heartbeat = setInterval(() => void beat(), HEARTBEAT_MS);
-  stopRefresh = startDailyRefresh(db, config, log);
-  stopTracking = await startTracking(db, config, log, createNotifier({
-      db,
-      log,
-      sender: apnsSender(),
-      bundleId: config.apns.bundleId,
-      darwinEnabled: Boolean(config.rdm.darwin.bootstrap),
-    }),);
+  const darwinEnabled = Boolean(config.rdm.darwin.bootstrap);
+  const lookups = new Lookups(db);
+  // After each timetable import: make regular journeys' journeys for today and tomorrow.
+  stopRefresh = startDailyRefresh(db, config, log, () => materialiseTemplates({ db, lookups, now: () => new Date(), darwinEnabled, log }));
+  stopTracking = await startTracking(
+    db,
+    config,
+    log,
+    createNotifier({ db, log, sender: apnsSender(), bundleId: config.apns.bundleId, darwinEnabled }),
+    lookups,
+  );
 }
 
 /** The APNs client, or null for a dry run (pushes are worked out and logged but not sent). */

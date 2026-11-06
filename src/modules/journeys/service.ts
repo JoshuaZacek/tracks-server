@@ -1,12 +1,14 @@
-import { sql } from 'kysely';
+import { sql, type RawBuilder } from 'kysely';
 import type { z } from 'zod';
 import { darwinEnabled, type AppDeps } from '../../app.ts';
 import type { FeedState } from '../../darwin/store.ts';
 import { pollSeconds } from '../../live/compute.ts';
 import { feedHealthy, feedState } from '../../live/feed.ts';
 import { updateJourneys } from '../../live/updater.ts';
-import { baselineOf } from '../../push/alerts.ts';
+import { baselineOf, stopAlarmArrival } from '../../push/alerts.ts';
+import type { Db } from '../../db/client.ts';
 import type { DeviceRow, JourneyRow } from '../../db/types.ts';
+import type { Lookups } from '../../live/lookups.ts';
 import { operatorName } from '../../domain/operators.ts';
 import { ApiError } from '../../http/errors.ts';
 import { toUkIso } from '../../time.ts';
@@ -32,8 +34,18 @@ export interface ReadContext {
   feed: FeedState | null;
 }
 
-async function readContext(deps: AppDeps): Promise<ReadContext> {
-  const enabled = darwinEnabled(deps);
+/** What saving a journey needs: the API passes its AppDeps, the worker its own (materialising regular journeys). */
+export interface SaveDeps {
+  db: Db;
+  lookups: Lookups;
+  now: () => Date;
+  darwinEnabled: boolean;
+}
+
+export const saveDepsOf = (deps: AppDeps): SaveDeps => ({ db: deps.db, lookups: deps.lookups, now: deps.now, darwinEnabled: darwinEnabled(deps) });
+
+async function readContext(deps: AppDeps | SaveDeps): Promise<ReadContext> {
+  const enabled = 'config' in deps ? darwinEnabled(deps) : deps.darwinEnabled;
   return { now: deps.now(), darwinEnabled: enabled, feed: enabled ? await feedState(deps.db) : null };
 }
 
@@ -108,6 +120,8 @@ function baseOf(row: JourneyRow) {
     scheduledArrival: toUkIso(row.scheduled_arrival),
     bookedPlatform: row.booked_platform,
     prefs: row.prefs,
+    templateId: row.template_id,
+    travelMinutes: row.travel_minutes,
     createdAt: toUkIso(row.created_at),
     archivedAt: row.archived_at ? toUkIso(row.archived_at) : null,
   };
@@ -131,7 +145,7 @@ const toListItem = (row: JourneyRow, rc: ReadContext): z.input<typeof JourneyLis
  * by while the train isn't running (a late train stays upcoming until it
  * arrives), or when the user archived it.
  */
-const isPast = (now: Date) => sql<boolean>`(
+export const isPast = (now: Date) => sql<boolean>`(
   archived_at IS NOT NULL OR state = 'arrived'
   OR (scheduled_arrival < ${now} AND state NOT IN (${sql.join(RUNNING.map((s) => sql.lit(s)))}))
 )`;
@@ -160,7 +174,7 @@ export async function listJourneys(deps: AppDeps, device: DeviceRow, scope: 'upc
   return { journeys: rows.map((r) => toListItem(r, rc)), nextPollSeconds: soonest === null ? null : clampPoll(soonest) };
 }
 
-async function findOwned(deps: AppDeps, device: DeviceRow, id: string): Promise<JourneyRow> {
+export async function findOwned(deps: Pick<AppDeps, 'db'>, device: DeviceRow, id: string): Promise<JourneyRow> {
   const row = await deps.db.selectFrom('journeys').selectAll().where('id', '=', id).where('device_id', '=', device.id).executeTakeFirst();
   // Someone else's journey looks exactly like a missing one.
   if (!row) throw ApiError.notFound('journey_not_found', 'No such journey');
@@ -185,7 +199,22 @@ const notOnRoute = (message: string) => new ApiError(422, 'station_not_on_route'
  * doesn't cover are 404 `train_not_running`. Saving the same trip again returns
  * the existing journey (un-archiving it) instead of a duplicate.
  */
-export async function createJourney(deps: AppDeps, device: DeviceRow, body: z.output<typeof CreateJourneyRequest>) {
+export function createJourney(deps: AppDeps, device: DeviceRow, body: z.output<typeof CreateJourneyRequest>) {
+  return saveJourney(saveDepsOf(deps), device.id, body);
+}
+
+/** Set on a journey made from a regular journey (template). */
+export interface JourneyExtras {
+  prefs?: Record<string, boolean | number>;
+  templateId?: string;
+  travelMinutes?: number | null;
+}
+
+/**
+ * createJourney for any caller. With `extras` (a regular journey), a trip the device already
+ * saved by hand is linked to the template rather than duplicated; its own prefs stay.
+ */
+export async function saveJourney(deps: SaveDeps, deviceId: string, body: z.output<typeof CreateJourneyRequest>, extras: JourneyExtras = {}) {
   if (body.toCrs && body.toCrs === body.fromCrs) {
     throw ApiError.validation([{ in: 'body', path: 'toCrs', message: 'Must differ from fromCrs' }]);
   }
@@ -203,7 +232,7 @@ export async function createJourney(deps: AppDeps, device: DeviceRow, body: z.ou
   const row = await deps.db
     .insertInto('journeys')
     .values({
-      device_id: device.id,
+      device_id: deviceId,
       train_uid: train.trainUid,
       run_date: train.runDate,
       date: from.scheduledDeparture!.slice(0, 10), // UK local date of the ISO time
@@ -219,8 +248,17 @@ export async function createJourney(deps: AppDeps, device: DeviceRow, body: z.ou
       calling_points: JSON.stringify(calls),
       route: JSON.stringify(train.route),
       alert_state: JSON.stringify(baselineOf(null)),
+      ...(extras.prefs ? { prefs: JSON.stringify(extras.prefs) } : {}),
+      template_id: extras.templateId ?? null,
+      travel_minutes: extras.travelMinutes ?? null,
     })
-    .onConflict((oc) => oc.constraint('journeys_device_trip_key').doUpdateSet({ archived_at: null }))
+    .onConflict((oc) =>
+      oc.constraint('journeys_device_trip_key').doUpdateSet({
+        archived_at: null,
+        template_id: sql<string | null>`coalesce(journeys.template_id, excluded.template_id)`,
+        travel_minutes: sql<number | null>`coalesce(journeys.travel_minutes, excluded.travel_minutes)`,
+      }),
+    )
     .returningAll()
     // xmax is 0 for a freshly inserted row and set when ON CONFLICT updated an existing one.
     .returning(sql<boolean>`(xmax = 0)`.as('inserted'))
@@ -251,23 +289,41 @@ export async function updateJourney(
   deps: AppDeps,
   device: DeviceRow,
   id: string,
-  body: { prefs?: z.output<typeof JourneyPrefsUpdate>; archived?: boolean },
+  body: { prefs?: z.output<typeof JourneyPrefsUpdate>; archived?: boolean; travelMinutes?: number | null },
 ) {
   const row = await findOwned(deps, device, id);
-  const changes: { prefs?: string; archived_at?: Date | null } = {};
+  const changes: { prefs?: string; archived_at?: Date | null; alert_state?: RawBuilder<string>; travel_minutes?: number | null } = {};
+  if (body.travelMinutes !== undefined) changes.travel_minutes = body.travelMinutes;
   if (body.prefs) {
-    const prefs: Record<string, boolean | number> = { ...row.prefs };
-    for (const [key, value] of Object.entries(body.prefs)) {
-      if (value === null) delete prefs[key];
-      else if (value !== undefined) prefs[key] = value;
-    }
+    const prefs = applyPrefsUpdate(row.prefs, body.prefs);
     changes.prefs = JSON.stringify(prefs);
+    const alarm = prefs.stopAlarm === true;
+    if (alarm !== (row.prefs.stopAlarm === true)) {
+      // The app sets its alarm from the arrival it is showing when the alarm is turned on
+      // (this response carries the same one), so that is what later moves are measured
+      // from. Off forgets it. Edited in place: the worker writes the rest of alert_state.
+      const calls = row.calling_points as CallingPointOut[];
+      const arrival = stopAlarmArrival(row.status as LiveStatusOut | null, { scheduledArrival: calls[row.to_index]!.scheduledArrival! });
+      changes.alert_state = alarm
+        ? sql<string>`jsonb_set(alert_state, '{alarmArrival}', ${JSON.stringify(arrival)}::jsonb)`
+        : sql<string>`alert_state - 'alarmArrival'`;
+    }
   }
   if (body.archived !== undefined) changes.archived_at = body.archived ? (row.archived_at ?? deps.now()) : null;
   const rc = await readContext(deps);
   if (!Object.keys(changes).length) return toJourney(row, rc);
   const updated = await deps.db.updateTable('journeys').set(changes).where('id', '=', row.id).returningAll().executeTakeFirstOrThrow();
   return toJourney(updated, rc);
+}
+
+/** Per-journey overrides with an update applied: a value sets one, null removes it, omitted leaves it. */
+export function applyPrefsUpdate(current: Record<string, boolean | number>, update: z.output<typeof JourneyPrefsUpdate>) {
+  const prefs: Record<string, boolean | number> = { ...current };
+  for (const [key, value] of Object.entries(update)) {
+    if (value === null) delete prefs[key];
+    else if (value !== undefined) prefs[key] = value;
+  }
+  return prefs;
 }
 
 export async function deleteJourney(deps: AppDeps, device: DeviceRow, id: string) {

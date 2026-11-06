@@ -6,6 +6,8 @@ import * as m0003 from './migrations/0003_journeys.ts';
 import * as m0004 from './migrations/0004_darwin.ts';
 import * as m0005 from './migrations/0005_push.ts';
 import * as m0006 from './migrations/0006_station_calls.ts';
+import * as m0007 from './migrations/0007_background_push.ts';
+import * as m0008 from './migrations/0008_journey_templates.ts';
 
 /** Listed explicitly (not read from disk) so migrations are type-checked and bundled with the code. */
 const migrations: Record<string, Migration> = {
@@ -15,6 +17,8 @@ const migrations: Record<string, Migration> = {
   '0004_darwin': m0004,
   '0005_push': m0005,
   '0006_station_calls': m0006,
+  '0007_background_push': m0007,
+  '0008_journey_templates': m0008,
 };
 
 export async function migrateToLatest(db: Db) {

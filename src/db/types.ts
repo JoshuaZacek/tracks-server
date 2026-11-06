@@ -8,6 +8,7 @@ export interface Database {
   devices: DevicesTable;
   stations: StationsTable;
   journeys: JourneysTable;
+  journey_templates: JourneyTemplatesTable;
   darwin_services: DarwinServicesTable;
   darwin_locations: DarwinLocationsTable;
   live_activities: LiveActivitiesTable;
@@ -36,6 +37,8 @@ export interface NotificationPrefs {
   arrival: boolean;
   delayThresholdMinutes: number;
   liveActivity: boolean;
+  morningSummary: boolean;
+  leaveNow: boolean;
 }
 
 export interface DevicesTable {
@@ -136,9 +139,37 @@ export interface JourneysTable {
   alert_state: ColumnType<unknown, string | null | undefined, string | null>;
   created_at: Timestamp;
   archived_at: Date | null;
+  /** The regular journey (template) it was made from; null when saved by hand or the template was deleted. */
+  template_id: ColumnType<string | null, string | null | undefined, string | null>;
+  /** Minutes to get to the boarding station, for the leave_now alert. */
+  travel_minutes: ColumnType<number | null, number | null | undefined, number | null>;
 }
 
 export type JourneyRow = Selectable<JourneysTable>;
+
+export interface JourneyTemplatesTable {
+  id: Generated<string>;
+  device_id: string;
+  /** The train last matched: a hint only, since UIDs change with the timetable. */
+  train_uid: string | null;
+  from_crs: string;
+  to_crs: string;
+  /** "HH:MM", UK local. */
+  depart_time: string;
+  /** Bitmask: bit 0 = Monday … bit 6 = Sunday. */
+  days: number;
+  travel_minutes: number | null;
+  /** "HH:MM" to send the morning summary; null = none. */
+  summary_time: string | null;
+  /** JourneyPrefs copied onto each journey made. */
+  prefs: ColumnType<Record<string, boolean | number>, string | undefined, string>;
+  /** DATE columns come back as 'YYYY-MM-DD'. */
+  last_created_date: string | null;
+  problem_date: string | null;
+  created_at: Timestamp;
+}
+
+export type JourneyTemplateRow = Selectable<JourneyTemplatesTable>;
 
 export interface DarwinServicesTable {
   rid: string;
@@ -180,8 +211,10 @@ export type PushOutcome = 'pending' | 'sent' | 'disabled' | 'no_token' | 'unregi
 
 export interface PushLogTable {
   id: Generated<string>;
-  journey_id: string;
-  channel: 'alert' | 'live_activity';
+  /** Null for a push about a template (template_unmatched). */
+  journey_id: string | null;
+  template_id: string | null;
+  channel: 'alert' | 'live_activity' | 'background';
   kind: string;
   dedupe_key: string | null;
   payload: ColumnType<unknown, string, string>;

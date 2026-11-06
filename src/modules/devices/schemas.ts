@@ -10,6 +10,10 @@ export const NotificationPrefs = z
     arrival: z.boolean(),
     delayThresholdMinutes: z.number().int().min(1).max(60).meta({ description: 'Alert when the delay reaches this many minutes' }),
     liveActivity: z.boolean().meta({ description: 'Start a Live Activity automatically 30 minutes before departure (needs pushToStartToken)' }),
+    morningSummary: z.boolean().meta({ description: "Regular journeys: a summary of the train's status at the template's summaryTime (kind morning_summary)" }),
+    leaveNow: z
+      .boolean()
+      .meta({ description: 'Journeys with travelMinutes: an alert when it is time to leave for the station, moved later if the train runs late (kind leave_now)' }),
   })
   .meta({ id: 'NotificationPrefs' });
 
@@ -21,6 +25,8 @@ export const DEFAULT_PREFS: z.output<typeof NotificationPrefs> = {
   arrival: true,
   delayThresholdMinutes: 5,
   liveActivity: true,
+  morningSummary: true,
+  leaveNow: true,
 };
 
 const ApnsEnvironment = z.enum(['sandbox', 'production']).meta({ id: 'ApnsEnvironment' });

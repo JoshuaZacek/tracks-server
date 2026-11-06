@@ -24,10 +24,29 @@ describe('devices and auth', () => {
       pushToStartTokenRegistered: false,
       appVersion: '1.0 (1)',
       locale: 'en_GB',
-      prefs: { delays: true, platforms: true, cancellations: true, departure: true, arrival: true, delayThresholdMinutes: 5, liveActivity: true },
+      prefs: {
+        delays: true,
+        platforms: true,
+        cancellations: true,
+        departure: true,
+        arrival: true,
+        delayThresholdMinutes: 5,
+        liveActivity: true,
+        morningSummary: true,
+        leaveNow: true,
+      },
     });
     expect(res.body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
     expect(res.body).not.toHaveProperty('token_hash');
+  });
+
+  it('reads preferences stored before morningSummary and leaveNow existed with those defaults, and keeps them on update', async () => {
+    const { deviceId, auth } = await registerDevice(api);
+    const old = { delays: false, platforms: true, cancellations: true, departure: true, arrival: true, delayThresholdMinutes: 5, liveActivity: true };
+    await db.updateTable('devices').set({ prefs: JSON.stringify(old) }).where('id', '=', deviceId).execute();
+    expect((await api().get('/v1/devices/me').set(auth).expect(200)).body.prefs).toEqual({ ...old, morningSummary: true, leaveNow: true });
+    const res = await api().patch('/v1/devices/me').set(auth).send({ prefs: { leaveNow: false } }).expect(200);
+    expect(res.body.prefs).toEqual({ ...old, morningSummary: true, leaveNow: false });
   });
 
   it('PATCH /v1/devices/me updates tokens and merges preferences', async () => {

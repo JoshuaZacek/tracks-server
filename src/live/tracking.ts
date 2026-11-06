@@ -3,6 +3,7 @@ import type { Db } from '../db/client.ts';
 import { startDarwinConsumer } from '../darwin/consumer.ts';
 import { pruneDarwin } from '../darwin/store.ts';
 import type { Logger } from '../logger.ts';
+import { materialiseTemplates } from '../modules/journey-templates/service.ts';
 import type { Notifier } from '../push/notifier.ts';
 import { ukToday } from '../time.ts';
 import { Lookups } from './lookups.ts';
@@ -15,10 +16,10 @@ const PRUNE_MS = 60 * 60_000;
  * Live tracking in the worker: the Darwin consumer updates journeys whose runs
  * change, and a clock tick handles changes that come from time passing
  * (entering the live window, not_found, arrival by deactivation). Changes go
- * to the notifier, which pushes in the background.
+ * to the notifier, which pushes in the background. The hourly prune also makes
+ * regular journeys' journeys, in case the daily refresh didn't.
  */
-export async function startTracking(db: Db, config: Config, log: Logger, notifier: Notifier | null = null) {
-  const lookups = new Lookups(db);
+export async function startTracking(db: Db, config: Config, log: Logger, notifier: Notifier | null = null, lookups = new Lookups(db)) {
   const enabled = Boolean(config.rdm.darwin.bootstrap);
   let consumer: Awaited<ReturnType<typeof startDarwinConsumer>> | null = null;
   const deps: UpdaterDeps = { db, lookups, now: () => new Date(), darwinEnabled: enabled, feedHealthy: () => consumer?.healthy() ?? false };
@@ -53,6 +54,8 @@ export async function startTracking(db: Db, config: Config, log: Logger, notifie
       if (Date.now() - lastPrune > PRUNE_MS) {
         if (enabled) await pruneDarwin(db, ukToday());
         await notifier?.prune();
+        // Cheap (last_created_date): catches up when the daily refresh was missed.
+        await materialiseTemplates({ db, lookups, now: () => new Date(), darwinEnabled: enabled, log });
         lastPrune = Date.now();
       }
     } catch (err) {

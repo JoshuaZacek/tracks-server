@@ -19,12 +19,13 @@ export const APNS_ORIGINS: Record<ApnsEnvironment, string> = {
 };
 
 export interface PushRequest {
-  /** Hex device token (alerts), Live Activity update token, or push-to-start token. */
+  /** Hex device token (alerts and background), Live Activity update token, or push-to-start token. */
   token: string;
   env: ApnsEnvironment;
-  pushType: 'alert' | 'liveactivity';
+  /** `background` wakes the app silently (`content-available`, no alert or sound) and must use priority 5. */
+  pushType: 'alert' | 'liveactivity' | 'background';
   topic: string;
-  /** 10 = deliver now; 5 = when convenient (doesn't count against the Live Activity budget). */
+  /** 10 = deliver now; 5 = when convenient (doesn't count against the Live Activity budget; the only one allowed for background). */
   priority: 5 | 10;
   payload: object;
   /** Unix seconds after which APNs should stop trying; 0 = deliver once or not at all. */

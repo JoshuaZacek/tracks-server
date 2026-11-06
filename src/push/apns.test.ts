@@ -82,6 +82,25 @@ describe('ApnsClient', () => {
     expect(valid).toBe(true);
   });
 
+  it('sends a background push at priority 5, with only the headers it is given', async () => {
+    const payload = { aps: { 'content-available': 1 }, journeyId: 'j1', kind: 'stop_alarm', expectedArrival: null, cancelled: true };
+    const result = await client.send({ ...request, pushType: 'background', priority: 5, payload, expiration: 456 });
+    expect(result.ok).toBe(true);
+    const [s] = seen;
+    expect(s!.headers).toMatchObject({
+      'apns-push-type': 'background',
+      'apns-topic': 'com.joshuazacek.TrainTracker',
+      'apns-priority': '5',
+      'apns-expiration': '456',
+    });
+    expect(s!.headers).not.toHaveProperty('apns-collapse-id');
+    expect(s!.body).toEqual(payload);
+
+    // No expiration given: no header.
+    await client.send({ ...request, pushType: 'background', priority: 5, payload });
+    expect(seen[1]!.headers).not.toHaveProperty('apns-expiration');
+  });
+
   it('reuses one provider token and one connection across pushes', async () => {
     await Promise.all([client.send(request), client.send(request), client.send(request)]);
     expect(new Set(seen.map((s) => s.headers.authorization)).size).toBe(1);

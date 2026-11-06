@@ -9,7 +9,17 @@ import type { Logger } from '../logger.ts';
 import { DEFAULT_PREFS } from '../modules/devices/schemas.ts';
 import type { LiveStatus } from '../modules/journeys/schemas.ts';
 import type { CallingPoint } from '../modules/trains/schemas.ts';
-import { planAlerts, type Alert, type AlertState, type JourneyFacts } from './alerts.ts';
+import {
+  baselineOf,
+  planAlerts,
+  planLeaveNow,
+  planMorningSummary,
+  planStopAlarm,
+  type Alert,
+  type AlertState,
+  type JourneyFacts,
+  type StopAlarmPush,
+} from './alerts.ts';
 import type { PushRequest, PushResult, PushSender } from './apns.ts';
 import {
   ENDING_STATES,
@@ -23,7 +33,8 @@ import {
 } from './liveActivity.ts';
 
 /**
- * Turns journey status changes into APNs alerts and Live Activity updates.
+ * Turns journey status changes into APNs alerts, Live Activity updates and
+ * background pushes for the app's stop alarm.
  *
  * It runs in the worker beside the Darwin consumer, but never holds it up:
  * changed journey ids go into a set, and one loop works through them (re-reading
@@ -53,6 +64,8 @@ export const AUTO_START_BEFORE_MIN = 30;
 export const FRESH_RUN_MS = 15 * 60_000;
 /** The consumer counts as caught up (not replaying the past) within this many seconds of real time. */
 export const CAUGHT_UP_LAG_S = 60;
+/** A template_unmatched alert not sent within this long (the worker was down) is dropped. */
+const TEMPLATE_ALERT_MAX_AGE_MS = 12 * 3600_000;
 const CONCURRENCY = 16;
 const PUSH_LOG_DAYS = 7;
 
@@ -61,6 +74,8 @@ type JourneyForPush = JourneyRow & {
   apns_env: ApnsEnvironment;
   push_to_start_token: string | null;
   device_prefs: NotificationPrefs;
+  /** The template's morning summary time (null without a template or a summary). */
+  summary_time: string | null;
 };
 
 /** Runs `fn` over `items`, at most `limit` at a time. */
@@ -72,6 +87,8 @@ async function eachLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<
 }
 
 const effectivePrefs = (j: JourneyForPush): NotificationPrefs => ({ ...DEFAULT_PREFS, ...j.device_prefs, ...(j.prefs as Partial<NotificationPrefs>) });
+/** The stop alarm is set per journey only (no device default): off unless turned on. */
+const stopAlarmOn = (j: JourneyRow) => j.prefs.stopAlarm === true;
 
 function factsOf(j: JourneyRow): JourneyFacts {
   const calls = j.calling_points as CallingPointOut[];
@@ -126,6 +143,36 @@ export function alertPayload(journeyId: string, alert: Alert) {
   };
 }
 
+/**
+ * "No train matched your regular journey on <date>". About a template, not a journey: it
+ * opens Regular journeys in the app. The materialiser records it (pending) in push_log,
+ * and the notifier's tick sends it, so the API can raise one too.
+ */
+export function templateAlertPayload(templateId: string, date: string, body: string) {
+  return {
+    aps: {
+      alert: { title: 'Regular journey', body },
+      sound: 'default',
+      'thread-id': templateId,
+      'interruption-level': 'active',
+    },
+    kind: 'template_unmatched',
+    templateId,
+    date,
+  };
+}
+
+/** Wakes the app in the background (no alert or sound) to move or cancel its stop alarm. */
+export function stopAlarmPayload(journeyId: string, push: StopAlarmPush) {
+  return {
+    aps: { 'content-available': 1 },
+    journeyId,
+    kind: 'stop_alarm',
+    expectedArrival: push.expectedArrival,
+    cancelled: push.cancelled,
+  };
+}
+
 export function createNotifier(opts: NotifierOptions) {
   const { db, log, sender, bundleId } = opts;
   const now = opts.now ?? (() => new Date());
@@ -170,7 +217,7 @@ export function createNotifier(opts: NotifierOptions) {
     return { outcome, result };
   }
 
-  async function logPush(journeyId: string, channel: 'alert' | 'live_activity', kind: string, dedupeKey: string | null, payload: object) {
+  async function logPush(journeyId: string, channel: 'alert' | 'live_activity' | 'background', kind: string, dedupeKey: string | null, payload: object) {
     const row = await db
       .insertInto('push_log')
       .values({ journey_id: journeyId, channel, kind, dedupe_key: dedupeKey, payload: JSON.stringify(payload) })
@@ -182,9 +229,26 @@ export function createNotifier(opts: NotifierOptions) {
 
   async function processAlerts(j: JourneyForPush, runFresh: boolean) {
     const status = j.status as LiveStatusOut | null;
-    if (!status) return;
     const told = j.alert_state as AlertState | null;
-    const { alerts, next } = planAlerts(told, status, factsOf(j), effectivePrefs(j), now(), { estimatesFresh: runFresh || !opts.darwinEnabled });
+    if (!status && !told) return;
+    const facts = factsOf(j);
+    const prefs = effectivePrefs(j);
+    const at = now();
+    const alerts: Alert[] = [];
+    let alarm: StopAlarmPush | null = null;
+    let next = told ?? baselineOf(null);
+    if (status) {
+      const planned = planAlerts(told, status, facts, prefs, at, { estimatesFresh: runFresh || !opts.darwinEnabled });
+      alerts.push(...planned.alerts);
+      ({ push: alarm, next } = planStopAlarm(planned.next, status, facts, stopAlarmOn(j), at));
+    }
+    if (!j.archived_at) {
+      // Time rules for regular journeys and travel times (the tick brings these journeys round when due).
+      const summary = planMorningSummary(next, status, facts, j.summary_time, prefs.morningSummary, at);
+      const leave = planLeaveNow(summary.next, status, facts, j.travel_minutes, prefs.leaveNow, at);
+      next = leave.next;
+      for (const alert of [summary.alert, leave.alert]) if (alert) alerts.push(alert);
+    }
     if (canonicalJson(next) !== canonicalJson(told)) {
       await db.updateTable('journeys').set({ alert_state: JSON.stringify(next) }).where('id', '=', j.id).execute();
     }
@@ -200,12 +264,26 @@ export function createNotifier(opts: NotifierOptions) {
         j.apns_token,
         j.apns_env,
       );
-      if (outcome === 'unregistered') {
-        await db.updateTable('devices').set({ apns_token: null }).where('id', '=', j.device_id).where('apns_token', '=', j.apns_token).execute();
-        j.apns_token = null;
-      }
+      await forgetDeadToken(j, outcome);
       log.info({ journey: j.id, kind: alert.kind, outcome }, 'Alert');
     }
+    if (alarm) {
+      const payload = stopAlarmPayload(j.id, alarm);
+      const logId = await logPush(j.id, 'background', 'stop_alarm', alarm.dedupeKey, payload);
+      if (!logId) return; // already sent
+      // Apple requires priority 5 for background pushes, and iOS may hold or drop
+      // them; the app then keeps the alarm it already has (and "approaching" still fires).
+      const expiration = Math.floor(now().getTime() / 1000) + 3600;
+      const { outcome } = await deliver(logId, { pushType: 'background', topic: bundleId, priority: 5, payload, expiration }, j.apns_token, j.apns_env);
+      await forgetDeadToken(j, outcome);
+      log.info({ journey: j.id, expectedArrival: alarm.expectedArrival, outcome }, 'Stop alarm push');
+    }
+  }
+
+  async function forgetDeadToken(j: JourneyForPush, outcome: PushOutcome) {
+    if (outcome !== 'unregistered') return;
+    await db.updateTable('devices').set({ apns_token: null }).where('id', '=', j.device_id).where('apns_token', '=', j.apns_token).execute();
+    j.apns_token = null;
   }
 
   async function processLiveActivity(j: JourneyForPush, la: LiveActivityRow | undefined) {
@@ -246,7 +324,8 @@ export function createNotifier(opts: NotifierOptions) {
       .selectFrom('journeys')
       .innerJoin('devices', 'devices.id', 'journeys.device_id')
       .selectAll('journeys')
-      .select(['devices.apns_token', 'devices.apns_env', 'devices.push_to_start_token', 'devices.prefs as device_prefs'])
+      .leftJoin('journey_templates', 'journey_templates.id', 'journeys.template_id')
+      .select(['devices.apns_token', 'devices.apns_env', 'devices.push_to_start_token', 'devices.prefs as device_prefs', 'journey_templates.summary_time'])
       .where('journeys.id', 'in', ids)
       .execute()) as JourneyForPush[];
   }
@@ -300,6 +379,7 @@ export function createNotifier(opts: NotifierOptions) {
       .leftJoin('live_activities', 'live_activities.journey_id', 'journeys.id')
       .selectAll('journeys')
       .select(['devices.apns_token', 'devices.apns_env', 'devices.push_to_start_token', 'devices.prefs as device_prefs'])
+      .select(sql<string | null>`NULL`.as('summary_time'))
       .where('devices.push_to_start_token', 'is not', null)
       .where('journeys.archived_at', 'is', null)
       .where('journeys.state', 'in', ['scheduled', 'live'])
@@ -336,18 +416,58 @@ export function createNotifier(opts: NotifierOptions) {
     });
   }
 
+  /** Sends the template_unmatched alerts the materialiser recorded (pending) in push_log. */
+  async function sendTemplateAlerts() {
+    const rows = await db
+      .selectFrom('push_log')
+      .innerJoin('journey_templates', 'journey_templates.id', 'push_log.template_id')
+      .innerJoin('devices', 'devices.id', 'journey_templates.device_id')
+      .select(['push_log.id', 'push_log.payload', 'push_log.template_id', 'devices.id as device_id', 'devices.apns_token', 'devices.apns_env'])
+      .where('push_log.journey_id', 'is', null)
+      .where('push_log.channel', '=', 'alert')
+      .where('push_log.outcome', '=', 'pending')
+      .where('push_log.created_at', '>', new Date(now().getTime() - TEMPLATE_ALERT_MAX_AGE_MS))
+      .orderBy('push_log.id')
+      .execute();
+    for (const r of rows) {
+      const expiration = Math.floor(now().getTime() / 1000) + 3600;
+      const payload = r.payload as object;
+      const { outcome } = await deliver(r.id, { pushType: 'alert', topic: bundleId, priority: 10, payload, expiration }, r.apns_token, r.apns_env);
+      if (outcome === 'unregistered') {
+        await db.updateTable('devices').set({ apns_token: null }).where('id', '=', r.device_id).where('apns_token', '=', r.apns_token).execute();
+      }
+      log.info({ template: r.template_id, outcome }, 'Regular journey alert');
+    }
+  }
+
   /**
-   * Time-driven work: the "approaching" alert, Live Activity updates held back
-   * by the rate limit or a failed push, and push-to-start.
+   * Time-driven work: the "approaching" alert, the morning summary and leave-now
+   * alerts once due, Live Activity updates held back by the rate limit or a
+   * failed push, push-to-start, and regular-journey alerts. The stop alarm needs
+   * nothing here: its pushes follow changes in the arrival estimate, which come
+   * through journeysChanged (or `held`, picked up once live data is healthy).
    */
   async function runTick() {
+    const at = now();
+    // Leave-now candidates by the scheduled time, with a margin for an expected departure earlier than that.
     const { rows } = await sql<{ id: string }>`
       SELECT id FROM journeys
       WHERE archived_at IS NULL AND state = 'departed' AND coalesce((alert_state->>'approaching')::boolean, false) = false
       UNION
-      SELECT journey_id FROM live_activities WHERE ended_at IS NULL`.execute(db);
+      SELECT journey_id FROM live_activities WHERE ended_at IS NULL
+      UNION
+      SELECT j.id FROM journeys j LEFT JOIN journey_templates t ON t.id = j.template_id
+      WHERE j.archived_at IS NULL AND j.state IN ('scheduled', 'live', 'cancelled')
+        AND j.scheduled_departure > ${new Date(at.getTime() - 6 * 3600_000)} AND j.scheduled_departure < ${new Date(at.getTime() + 24 * 3600_000)}
+        AND (
+          (t.summary_time IS NOT NULL AND coalesce((j.alert_state->>'morningSummary')::boolean, false) = false
+            AND ((j.date::text || ' ' || t.summary_time)::timestamp AT TIME ZONE 'Europe/London') <= ${at})
+          OR (j.travel_minutes IS NOT NULL AND coalesce((j.alert_state->>'leaveNow')::boolean, false) = false
+            AND j.scheduled_departure - make_interval(mins => j.travel_minutes + 12) <= ${at})
+        )`.execute(db);
     await processJourneys(rows.map((r) => r.id));
     if (await liveDataHealthy()) await autoStart();
+    await sendTemplateAlerts();
   }
 
   async function drain() {

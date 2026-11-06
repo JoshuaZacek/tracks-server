@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type { NotificationPrefs } from '../db/types.ts';
 import type { LiveStatus } from '../modules/journeys/schemas.ts';
+import { dayIndex, hhmmToMinutes, ukWallClock } from '../time.ts';
 
 /**
  * Which notifications a journey's latest status calls for. Pure, so the rules
@@ -24,9 +25,28 @@ export interface AlertState {
   departed: boolean;
   approaching: boolean;
   arrived: boolean;
+  /**
+   * Stop alarm: the destination arrival the app last scheduled its alarm from (pushed, or
+   * current when the alarm was turned on); null once a cancellation was pushed. Absent while
+   * the alarm is off, and in states saved before it existed: the next look records a baseline.
+   */
+  alarmArrival?: string | null;
+  /** Morning summary sent, or no longer due (too late, or the train left). Absent = not yet. */
+  morningSummary?: boolean;
+  /** Leave-now alert sent, or no longer due. Absent = not yet. */
+  leaveNow?: boolean;
 }
 
-export type AlertKind = 'platform' | 'delay' | 'cancelled' | 'departed' | 'approaching' | 'arrived';
+export type AlertKind =
+  | 'platform'
+  | 'delay'
+  | 'cancelled'
+  | 'departed'
+  | 'approaching'
+  | 'arrived'
+  | 'morning_summary'
+  | 'leave_now'
+  | 'template_unmatched';
 
 export interface Alert {
   kind: AlertKind;
@@ -87,7 +107,7 @@ export function baselineOf(s: LiveStatusOut | null): AlertState {
 }
 
 /** The destination's expected arrival (else scheduled) as ISO. */
-function dueAt(s: LiveStatusOut, j: JourneyFacts) {
+function dueAt(s: LiveStatusOut, j: Pick<JourneyFacts, 'scheduledArrival'>) {
   const dest = destination(s);
   return dest?.actual ?? dest?.expected ?? j.scheduledArrival;
 }
@@ -202,4 +222,164 @@ export function planAlerts(
   }
 
   return { alerts, next };
+}
+
+// ---- stop alarm -------------------------------------------------------------------
+
+/** A move in the expected arrival smaller than this isn't worth waking the app for. */
+export const STOP_ALARM_STEP_MIN = 2;
+
+export interface StopAlarmPush {
+  /** Unique per journey: the same move is never pushed twice. */
+  dedupeKey: string;
+  /** ISO, UK offset; null when cancelled. */
+  expectedArrival: string | null;
+  cancelled: boolean;
+}
+
+/**
+ * What the app's stop alarm is set from: the arrival at my destination (as the
+ * alerts see it), or null when the train no longer gets me there. A journey with
+ * no live status yet is due at its scheduled time.
+ */
+export function stopAlarmArrival(s: LiveStatusOut | null, j: Pick<JourneyFacts, 'scheduledArrival'>): string | null {
+  if (!s) return j.scheduledArrival;
+  return isCancelled(s) ? null : dueAt(s, j);
+}
+
+/**
+ * Whether the app's stop alarm needs moving. The app schedules an AlarmKit alarm
+ * before arrival and reschedules it from live data whenever it runs; in the
+ * background only a push wakes it. So this pushes when the arrival moves by
+ * STOP_ALARM_STEP_MIN or more from what the app last had (drift adds up, as for
+ * delays), and when the train is cancelled so the alarm can be cancelled too.
+ *
+ * Takes the state after planAlerts (which carries alarmArrival through unchanged).
+ * With the alarm off, the remembered arrival is dropped, so turning it on again
+ * starts from a fresh baseline: the app sets the alarm itself when it's toggled.
+ */
+export function planStopAlarm(
+  state: AlertState,
+  s: LiveStatusOut,
+  j: JourneyFacts,
+  enabled: boolean,
+  now: Date,
+): { push: StopAlarmPush | null; next: AlertState } {
+  const { alarmArrival: told, ...rest } = state;
+  if (!enabled) return { push: null, next: rest };
+  const next: AlertState = { ...rest, alarmArrival: told };
+  // At my stop the alarm has done its job (or the user is off the train).
+  if (s.state === 'arrived') return { push: null, next };
+  const due = stopAlarmArrival(s, j);
+  if (told === undefined) return { push: null, next: { ...rest, alarmArrival: due } };
+  if (due === told) return { push: null, next };
+
+  const key = `stop_alarm:${told ?? 'cancelled'}>${due ?? 'cancelled'}`;
+  if (due === null) {
+    next.alarmArrival = null;
+    // An alarm that already went off has nothing left to cancel.
+    if (minutesBetween(now, told!) <= 0) return { push: null, next };
+    return { push: { dedupeKey: key, expectedArrival: null, cancelled: true }, next };
+  }
+  // A time already past can't be alarmed for; keep the old one, so a later estimate compares against what the app has.
+  if (minutesBetween(now, due) <= 0) return { push: null, next };
+  // Reinstated after a cancellation: the app has no alarm, so any time is news.
+  if (told !== null && Math.abs(Date.parse(due) - Date.parse(told)) < STOP_ALARM_STEP_MIN * 60_000) return { push: null, next };
+  next.alarmArrival = due;
+  return { push: { dedupeKey: key, expectedArrival: due, cancelled: false }, next };
+}
+
+// ---- regular journeys: morning summary and leave now -------------------------------
+
+/** A morning summary due longer ago than this (the worker was down) is no longer worth sending. */
+export const MORNING_SUMMARY_LATE_MIN = 30;
+/** Leave-now fires this long before the time it takes to get to the station, as a buffer. */
+export const LEAVE_NOW_BUFFER_MIN = 2;
+/** A leave-now alert due longer ago than this is no longer worth sending. */
+export const LEAVE_NOW_LATE_MIN = 10;
+
+export interface TimedPlan {
+  alert: Alert | null;
+  next: AlertState;
+}
+
+const titleOf = (j: JourneyFacts) => `${hhmm(j.scheduledDeparture)} ${j.fromName} to ${j.toName}`;
+const timedAlert = (kind: AlertKind, j: JourneyFacts, body: string, timeSensitive: boolean): Alert => ({
+  kind,
+  dedupeKey: kind,
+  title: titleOf(j),
+  body,
+  collapseId: null,
+  timeSensitive,
+});
+const platformText = (s: LiveStatusOut | null) => (s?.service?.platform?.number ? ` · platform ${s.service.platform.number}` : '');
+/** "on time" or "6 min late, expected 07:48". */
+function runningText(s: LiveStatusOut) {
+  const d = s.service?.delayMinutes ?? 0;
+  const expected = s.service?.expectedDeparture;
+  return d > 0 ? `${d} min late${expected ? `, expected ${hhmm(expected)}` : ''}` : 'on time';
+}
+
+/**
+ * The morning summary of a regular journey: at the template's summaryTime on the
+ * day of the journey, if that's before the scheduled departure and the train
+ * hasn't left. Skipped (and not tried again) when over MORNING_SUMMARY_LATE_MIN
+ * overdue. A time rule: the notifier's tick checks it.
+ */
+export function planMorningSummary(
+  told: AlertState,
+  s: LiveStatusOut | null,
+  j: JourneyFacts,
+  summaryTime: string | null,
+  enabled: boolean,
+  now: Date,
+): TimedPlan {
+  if (summaryTime === null || told.morningSummary || !enabled) return { alert: null, next: told };
+  const at = ukWallClock(j.scheduledDeparture.slice(0, 10), hhmmToMinutes(summaryTime)).getTime();
+  if (now.getTime() < at) return { alert: null, next: told };
+  const done = { ...told, morningSummary: true };
+  const overdue = now.getTime() - at > MORNING_SUMMARY_LATE_MIN * 60_000;
+  if (at >= Date.parse(j.scheduledDeparture) || overdue || (s && isDeparted(s))) return { alert: null, next: done };
+
+  const train = `Your ${hhmm(j.scheduledDeparture)} to ${j.toName}`;
+  let body: string;
+  if (s && isCancelled(s)) body = `${train} is cancelled`;
+  else if (!s?.service) body = `${train} has no live updates yet`;
+  else body = `${train} is ${runningText(s)}${platformText(s)}`;
+  return { alert: timedAlert('morning_summary', j, body, false), next: done };
+}
+
+/**
+ * Leave now: at the expected departure (else scheduled) minus travelMinutes minus
+ * LEAVE_NOW_BUFFER_MIN, so it moves later while the train runs late. If the train
+ * is cancelled by then, the same alert says so instead. Not sent once the train
+ * has left or when over LEAVE_NOW_LATE_MIN overdue. A time rule: the tick checks it.
+ */
+export function planLeaveNow(
+  told: AlertState,
+  s: LiveStatusOut | null,
+  j: JourneyFacts,
+  travelMinutes: number | null,
+  enabled: boolean,
+  now: Date,
+): TimedPlan {
+  if (travelMinutes === null || told.leaveNow || !enabled) return { alert: null, next: told };
+  const cancelled = s !== null && isCancelled(s);
+  const departs = (!cancelled && s?.service?.expectedDeparture) || j.scheduledDeparture;
+  const at = Date.parse(departs) - (travelMinutes + LEAVE_NOW_BUFFER_MIN) * 60_000;
+  if (now.getTime() < at) return { alert: null, next: told };
+  const done = { ...told, leaveNow: true };
+  if ((s && isDeparted(s)) || now.getTime() - at > LEAVE_NOW_LATE_MIN * 60_000) return { alert: null, next: done };
+
+  const body = cancelled
+    ? `Your ${hhmm(j.scheduledDeparture)} is cancelled. No need to leave yet.`
+    : `Leave now for your ${hhmm(j.scheduledDeparture)} to ${j.toName}${s?.service ? `, ${runningText(s)}` : ''}${platformText(s)}`;
+  return { alert: timedAlert('leave_now', j, body, true), next: done };
+}
+
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/** The template_unmatched alert (and the template's `problem` message). */
+export function templateUnmatchedText(departTime: string, fromName: string, toName: string, date: string) {
+  return `Couldn't find your ${departTime} ${fromName} → ${toName} on ${WEEKDAYS[dayIndex(date) - 1]}. Check your regular journey.`;
 }

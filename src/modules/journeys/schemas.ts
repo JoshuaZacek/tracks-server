@@ -116,7 +116,10 @@ export const LiveSummary = z
 
 // ---- journeys -------------------------------------------------------------------
 
-/** Per-journey overrides of the device's notification preferences; omitted = use the device setting. */
+/** Time to get to the boarding station: the leave_now alert fires this long (plus 2 min) before departure. */
+export const TravelMinutes = z.number().int().min(0).max(240).meta({ description: 'Minutes to get to the boarding station (for the leave_now alert)' });
+
+/** Per-journey overrides of the device's notification preferences; omitted = use the device setting (stopAlarm has none: omitted = off). */
 export const JourneyPrefs = z
   .object({
     delays: z.boolean().optional(),
@@ -126,6 +129,15 @@ export const JourneyPrefs = z
     arrival: z.boolean().optional(),
     delayThresholdMinutes: z.number().int().min(1).max(60).optional(),
     liveActivity: z.boolean().optional(),
+    stopAlarm: z
+      .boolean()
+      .optional()
+      .meta({
+        description:
+          'Wake me before my stop: the app schedules an alarm before arrival at my destination, and the server sends a background push (kind stop_alarm) when that arrival moves by 2+ min or is cancelled. Journey-only; absent = off',
+      }),
+    morningSummary: z.boolean().optional(),
+    leaveNow: z.boolean().optional(),
   })
   .meta({ id: 'JourneyPrefs' });
 
@@ -142,6 +154,8 @@ const JourneyBase = z.object({
   scheduledArrival: DateTime,
   bookedPlatform: z.string().nullable().meta({ description: 'Timetabled platform at my boarding station' }),
   prefs: JourneyPrefs,
+  templateId: Uuid.nullable().meta({ description: 'The regular journey this was made from; null when saved by hand or no longer repeating' }),
+  travelMinutes: TravelMinutes.nullable(),
   createdAt: DateTime,
   archivedAt: DateTime.nullable(),
 });
@@ -187,6 +201,9 @@ export const JourneyPrefsUpdate = z
     arrival: z.boolean().nullable().optional(),
     delayThresholdMinutes: z.number().int().min(1).max(60).nullable().optional(),
     liveActivity: z.boolean().nullable().optional(),
+    stopAlarm: z.boolean().nullable().optional(),
+    morningSummary: z.boolean().nullable().optional(),
+    leaveNow: z.boolean().nullable().optional(),
   })
   .meta({ id: 'JourneyPrefsUpdate' });
 
@@ -194,6 +211,7 @@ export const UpdateJourneyRequest = z
   .object({
     prefs: JourneyPrefsUpdate.optional(),
     archived: z.boolean().optional().meta({ description: 'true moves the journey to past; false brings it back' }),
+    travelMinutes: TravelMinutes.nullable().optional().meta({ description: 'Minutes to get to the boarding station; null clears it' }),
   })
   .meta({ id: 'UpdateJourneyRequest' });
 

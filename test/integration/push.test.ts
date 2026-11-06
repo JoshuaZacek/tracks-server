@@ -257,6 +257,79 @@ describe('alerts', () => {
   });
 });
 
+describe('stop alarm', () => {
+  const pbro = (extra: object) => ({ tpl: 'PBRO', pta: '17:45', ptd: '17:47', wta: '17:45', wtd: '17:47', ...extra });
+  const background = () => sender.take().filter((r) => r.pushType === 'background');
+  const backgroundLog = (journeyId: string) =>
+    db.selectFrom('push_log').select(['kind', 'dedupe_key', 'outcome', 'payload']).where('journey_id', '=', journeyId).where('channel', '=', 'background').orderBy('id').execute();
+
+  it('wakes the app when the arrival at my stop moves by 2+ minutes or the train is cancelled, only with the alarm on', async () => {
+    const journey = await save();
+    const other = await save({ toCrs: 'PBO' });
+    const res = await api().patch(`/v1/journeys/${journey.id}`).set(auth).send({ prefs: { stopAlarm: true } }).expect(200);
+    expect(res.body.prefs).toEqual({ stopAlarm: true });
+    expect((await api().get(`/v1/journeys/${journey.id}`).set(auth).expect(200)).body.prefs).toEqual({ stopAlarm: true });
+
+    // Turned on with the timetabled 19:00 showing; a 1-minute move isn't worth a push.
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' } }), pbro({ arr: { et: '17:46' } }), york({ arr: { et: '19:01' } })]));
+    expect(background()).toEqual([]);
+
+    // 3 minutes from what the app has: one silent push to the device.
+    await deliver(ts([pbro({ arr: { et: '17:49' } }), york({ arr: { et: '19:03' } })]));
+    const expected = { aps: { 'content-available': 1 }, journeyId: journey.id, kind: 'stop_alarm', expectedArrival: '2026-11-03T19:03:00+00:00', cancelled: false };
+    const [push, ...more] = background();
+    expect(more).toEqual([]);
+    expect(push).toEqual({ token: APNS_TOKEN, env: 'sandbox', pushType: 'background', topic: BUNDLE, priority: 5, payload: expected, expiration: expect.any(Number) });
+    expect(JSON.stringify(push!.payload)).toBe(
+      `{"aps":{"content-available":1},"journeyId":"${journey.id}","kind":"stop_alarm","expectedArrival":"2026-11-03T19:03:00+00:00","cancelled":false}`,
+    );
+    expect(await backgroundLog(journey.id)).toEqual([
+      { kind: 'stop_alarm', dedupe_key: 'stop_alarm:2026-11-03T19:00:00+00:00>2026-11-03T19:03:00+00:00', outcome: 'sent', payload: expected },
+    ]);
+
+    // Cancelled, in a dry run (no APNs key): recorded as disabled, with no arrival.
+    notifier = createNotifier({ db, log, sender: null, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
+    await deliver({
+      schedule: {
+        ...SCHEDULE.schedule,
+        OR: { ...SCHEDULE.schedule.OR, can: 'true' },
+        IP: SCHEDULE.schedule.IP.map((l) => ({ ...l, can: 'true' })),
+        DT: { ...SCHEDULE.schedule.DT, can: 'true' },
+      },
+    });
+    expect((await backgroundLog(journey.id)).at(-1)).toEqual({
+      kind: 'stop_alarm',
+      dedupe_key: 'stop_alarm:2026-11-03T19:03:00+00:00>cancelled',
+      outcome: 'disabled',
+      payload: { ...expected, expectedArrival: null, cancelled: true },
+    });
+    expect(await backgroundLog(journey.id)).toHaveLength(2);
+
+    // Without the alarm (Peterborough moved 3 minutes too): nothing.
+    expect(await backgroundLog(other.id)).toEqual([]);
+  });
+
+  it('measures moves from the arrival showing when the alarm was turned on, and forgets it when turned off', async () => {
+    const journey = await save();
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' } }), york({ arr: { et: '19:05' } })]));
+    const alarm = (stopAlarm: boolean | null) => api().patch(`/v1/journeys/${journey.id}`).set(auth).send({ prefs: { stopAlarm } }).expect(200);
+    // On at 19:05 (before the worker looks at the journey again): 19:07 is a 2-minute move.
+    await alarm(true);
+    await deliver(ts([york({ arr: { et: '19:07' } })]));
+    expect(background().map((r) => (r.payload as { expectedArrival: string }).expectedArrival)).toEqual(['2026-11-03T19:07:00+00:00']);
+
+    await alarm(null);
+    await deliver(ts([york({ arr: { et: '19:15' } })]));
+    expect(background()).toEqual([]);
+
+    // On again at 19:15: measured from there, not from the 19:07 last pushed.
+    await alarm(true);
+    await deliver(ts([york({ arr: { et: '19:16' } })]));
+    expect(background()).toEqual([]);
+    expect(await backgroundLog(journey.id)).toHaveLength(1);
+  });
+});
+
 describe('Live Activities', () => {
   type Aps = { aps: Record<string, unknown> & { 'content-state': Record<string, unknown> } };
   const activityPushes = () => sender.take().filter((r) => r.pushType === 'liveactivity');
@@ -386,5 +459,110 @@ describe('Live Activities', () => {
     await api().patch(`/v1/journeys/${other.id}`).set(auth).send({ prefs: { liveActivity: false } }).expect(200);
     await tick();
     expect(activityPushes()).toEqual([]);
+  });
+});
+
+describe('regular journeys: morning summary and leave now (dry run)', () => {
+  const timedLog = (journeyId: string) =>
+    db
+      .selectFrom('push_log')
+      .select(['kind', 'outcome', 'payload', 'created_at'])
+      .where('journey_id', '=', journeyId)
+      .where('kind', 'in', ['morning_summary', 'leave_now'])
+      .orderBy('id')
+      .execute();
+  const texts = async (journeyId: string) =>
+    (await timedLog(journeyId)).map((r) => {
+      const p = r.payload as { kind: string; aps: { alert: { body: string }; 'interruption-level': string } };
+      return `${r.outcome} ${p.kind} (${p.aps['interruption-level']}): ${p.aps.alert.body}`;
+    });
+  /** A weekday 17:00 King's Cross to York with a 16:30 summary and 20 minutes to get to the station. */
+  async function regularJourney() {
+    clock = new Date('2026-11-03T16:00:00Z');
+    notifier = createNotifier({ db, log, sender: null, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
+    const template = (
+      await api()
+        .post('/v1/journey-templates')
+        .set(auth)
+        .send({ fromCrs: 'KGX', toCrs: 'YRK', departTime: '17:00', days: [1, 2, 3, 4, 5], summaryTime: '16:30', travelMinutes: 20 })
+        .expect(201)
+    ).body;
+    expect(template.nextJourney.date).toBe('2026-11-03');
+    return template.nextJourney.id as string;
+  }
+
+  it('sends the summary at its time and leave-now at expected departure − travel − 2 min, later for a late train, once', async () => {
+    const id = await regularJourney();
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' }, plat: { conf: 'true', '': '7' } })]));
+
+    clock = new Date('2026-11-03T16:29:00Z');
+    await tick();
+    expect(await timedLog(id)).toEqual([]);
+    clock = new Date('2026-11-03T16:30:00Z');
+    await tick();
+    expect(await texts(id)).toEqual(['disabled morning_summary (active): Your 17:00 to York is on time · platform 7']);
+
+    // 6 minutes late: leave-now moves from 16:38 to 16:44.
+    clock = new Date('2026-11-03T16:35:00Z');
+    await deliver(ts([kgx({ dep: { et: '17:06' }, plat: { conf: 'true', '': '7' } })]));
+    clock = new Date('2026-11-03T16:38:00Z');
+    await tick();
+    clock = new Date('2026-11-03T16:43:30Z');
+    await tick();
+    expect(await timedLog(id)).toHaveLength(1);
+    clock = new Date('2026-11-03T16:44:00Z');
+    await tick();
+    expect((await texts(id)).at(-1)).toBe('disabled leave_now (time-sensitive): Leave now for your 17:00 to York, 6 min late, expected 17:06 · platform 7');
+
+    // A restarted worker (a new notifier) repeats neither.
+    notifier = createNotifier({ db, log, sender: null, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
+    clock = new Date('2026-11-03T16:46:00Z');
+    await tick();
+    await deliver(ts([kgx({ dep: { et: '17:08' }, plat: { conf: 'true', '': '7' } })]));
+    expect(await timedLog(id)).toHaveLength(2);
+    const state = await db.selectFrom('journeys').select('alert_state').where('id', '=', id).executeTakeFirstOrThrow();
+    expect(state.alert_state).toMatchObject({ morningSummary: true, leaveNow: true });
+  });
+
+  it('says when the train is cancelled', async () => {
+    const id = await regularJourney();
+    clock = new Date('2026-11-03T16:10:00Z');
+    const cancelled = {
+      schedule: {
+        ...SCHEDULE.schedule,
+        OR: { ...SCHEDULE.schedule.OR, can: 'true' },
+        IP: SCHEDULE.schedule.IP.map((l) => ({ ...l, can: 'true' })),
+        DT: { ...SCHEDULE.schedule.DT, can: 'true' },
+      },
+    };
+    await deliver(cancelled);
+    clock = new Date('2026-11-03T16:30:00Z');
+    await tick();
+    clock = new Date('2026-11-03T16:38:00Z');
+    await tick();
+    expect(await texts(id)).toEqual([
+      'disabled morning_summary (active): Your 17:00 to York is cancelled',
+      'disabled leave_now (time-sensitive): Your 17:00 is cancelled. No need to leave yet.',
+    ]);
+  });
+
+  it('follows the morningSummary and leaveNow preferences', async () => {
+    const id = await regularJourney();
+    await api().patch(`/v1/journeys/${id}`).set(auth).send({ prefs: { leaveNow: false } }).expect(200);
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' } })]));
+    // The worker was down from 16:29: at 16:59 the summary is 29 minutes late, still worth sending (30 is the limit).
+    clock = new Date('2026-11-03T16:59:00Z');
+    await tick();
+    expect(await texts(id)).toEqual(['disabled morning_summary (active): Your 17:00 to York is on time']);
+
+    await api().patch('/v1/devices/me').set(auth).send({ prefs: { morningSummary: false } }).expect(200);
+    const tomorrow = (await db.selectFrom('journeys').select('id').where('date', '=', '2026-11-04').executeTakeFirstOrThrow()).id;
+    clock = new Date('2026-11-04T16:30:00Z');
+    await tick();
+    expect(await texts(tomorrow)).toEqual([]);
+    // Leave-now is on for tomorrow (device default): 17:15 − 22 min.
+    clock = new Date('2026-11-04T16:53:00Z');
+    await tick();
+    expect(await texts(tomorrow)).toEqual(['disabled leave_now (time-sensitive): Leave now for your 17:15 to York']);
   });
 });
