@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type { NotificationPrefs } from '../db/types.ts';
 import type { LiveStatus } from '../modules/journeys/schemas.ts';
+import type { ConnectionOut, ConnectionStatusValue } from '../live/connection.ts';
 import { dayIndex, hhmmToMinutes, ukWallClock } from '../time.ts';
 
 /**
@@ -46,7 +47,8 @@ export type AlertKind =
   | 'arrived'
   | 'morning_summary'
   | 'leave_now'
-  | 'template_unmatched';
+  | 'template_unmatched'
+  | 'connection';
 
 export interface Alert {
   kind: AlertKind;
@@ -383,3 +385,86 @@ const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 export function templateUnmatchedText(departTime: string, fromName: string, toName: string, date: string) {
   return `Couldn't find your ${departTime} ${fromName} → ${toName} on ${WEEKDAYS[dayIndex(date) - 1]}. Check your regular journey.`;
 }
+
+// ---- connections (trips) ------------------------------------------------------------
+
+/** A later train offered when a change is at risk or missed. */
+export interface AlternativeFacts {
+  scheduledDeparture: string;
+  /** Expected (or actual) departure when Darwin has the run. */
+  expectedDeparture: string | null;
+  /** At the next leg's destination. */
+  scheduledArrival: string | null;
+}
+
+export interface ConnectionFacts {
+  tripId: string;
+  /** The next leg: the train to change onto. */
+  nextScheduledDeparture: string;
+  nextToName: string;
+}
+
+const RANK: Record<ConnectionStatusValue, number> = { ok: 0, tight: 1, at_risk: 2, missed: 3 };
+const isBad = (s: ConnectionStatusValue) => s === 'at_risk' || s === 'missed';
+
+function alternativeText(alt: AlternativeFacts | undefined) {
+  if (!alt) return '';
+  const late = alt.expectedDeparture && alt.expectedDeparture !== alt.scheduledDeparture ? ` (expected ${hhmm(alt.expectedDeparture)})` : '';
+  const arrives = alt.scheduledArrival ? `, arriving ${hhmm(alt.scheduledArrival)}` : '';
+  return ` Next train: the ${hhmm(alt.scheduledDeparture)}${late}${arrives}.`;
+}
+
+/**
+ * The connection alert for one change of a trip, against the status last told
+ * (trips.alert_state). Sent when the change gets worse into at_risk or missed
+ * (with the next train that works when missed), and when it is back to ok.
+ *
+ * Hysteresis keeps it quiet while estimates wobble: once at_risk or missed has
+ * been told, a move to `tight` (or from missed to at_risk) is not news and the
+ * told status stays, so only a real recovery to `ok`, or a further worsening,
+ * alerts. A first look records a baseline (what the user saw when linking), and
+ * nothing is sent once the change is settled (arrived, and the next train left).
+ */
+export function planConnectionAlert(
+  told: ConnectionStatusValue | undefined,
+  c: ConnectionOut,
+  f: ConnectionFacts,
+  opts: { enabled: boolean; settled: boolean; alternatives?: AlternativeFacts[] },
+): { alert: Alert | null; next: ConnectionStatusValue } {
+  const status = c.status;
+  if (told === undefined || opts.settled) return { alert: null, next: status };
+  if (!isBad(told) && !isBad(status)) return { alert: null, next: status };
+
+  const worse = isBad(status) && RANK[status] > RANK[told];
+  const recovered = isBad(told) && status === 'ok';
+  if (!worse && !recovered) return { alert: null, next: told };
+
+  const train = `the ${hhmm(f.nextScheduledDeparture)} to ${f.nextToName}`;
+  const gap = Math.floor((Date.parse(c.departure) - Date.parse(c.arrival)) / 60_000);
+  const platform = c.departurePlatform ? ` from platform ${c.departurePlatform.number}` : '';
+  let body: string;
+  if (recovered) body = `Back on: ${gap} min to change for ${train}${platform}.`;
+  else if (status === 'at_risk') body = `Tight change: ${gap} min for ${train}${platform} (${c.minimumChangeMinutes} needed).`;
+  else {
+    const what = c.cancelled
+      ? c.message.startsWith('This train')
+        ? `${c.message}.`
+        : `${capitalised(train)} is cancelled.`
+      : `You'll miss ${train}: you're due at ${hhmm(c.arrival)} and it leaves at ${hhmm(c.departure)}.`;
+    body = `${what}${alternativeText(opts.alternatives?.[0])}`;
+  }
+  if (!opts.enabled) return { alert: null, next: status };
+  return {
+    alert: {
+      kind: 'connection',
+      dedupeKey: `connection:${c.leg}:${told}>${status}@${c.arrival}|${c.departure}`,
+      title: `Your change at ${c.station.name}`,
+      body,
+      collapseId: `${f.tripId}:connection:${c.leg}`,
+      timeSensitive: !recovered,
+    },
+    next: status,
+  };
+}
+
+const capitalised = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

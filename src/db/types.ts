@@ -9,6 +9,7 @@ export interface Database {
   stations: StationsTable;
   journeys: JourneysTable;
   journey_templates: JourneyTemplatesTable;
+  trips: TripsTable;
   darwin_services: DarwinServicesTable;
   darwin_locations: DarwinLocationsTable;
   live_activities: LiveActivitiesTable;
@@ -39,6 +40,7 @@ export interface NotificationPrefs {
   liveActivity: boolean;
   morningSummary: boolean;
   leaveNow: boolean;
+  connections: boolean;
 }
 
 export interface DevicesTable {
@@ -143,9 +145,23 @@ export interface JourneysTable {
   template_id: ColumnType<string | null, string | null | undefined, string | null>;
   /** Minutes to get to the boarding station, for the leave_now alert. */
   travel_minutes: ColumnType<number | null, number | null | undefined, number | null>;
+  /** The trip (a journey with changes) this is a leg of; null on its own. */
+  trip_id: ColumnType<string | null, string | null | undefined, string | null>;
+  /** 1 for the first train of the trip; null without a trip. */
+  leg: ColumnType<number | null, number | null | undefined, number | null>;
 }
 
 export type JourneyRow = Selectable<JourneysTable>;
+
+export interface TripsTable {
+  id: Generated<string>;
+  device_id: string;
+  /** Connection status last told per change, keyed by the arriving leg: { "1": "ok" }. */
+  alert_state: ColumnType<Record<string, string>, string | undefined, string>;
+  created_at: Timestamp;
+}
+
+export type TripRow = Selectable<TripsTable>;
 
 export interface JourneyTemplatesTable {
   id: Generated<string>;

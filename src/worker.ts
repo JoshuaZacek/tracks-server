@@ -63,7 +63,7 @@ async function main() {
     db,
     config,
     log,
-    createNotifier({ db, log, sender: apnsSender(), bundleId: config.apns.bundleId, darwinEnabled }),
+    createNotifier({ db, log, sender: apnsSender(), bundleId: config.apns.bundleId, darwinEnabled, lookups }),
     lookups,
   );
 }

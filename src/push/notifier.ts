@@ -3,15 +3,20 @@ import type { z } from 'zod';
 import type { Db } from '../db/client.ts';
 import type { ApnsEnvironment, JourneyRow, LiveActivityRow, NotificationPrefs, PushOutcome } from '../db/types.ts';
 import { operatorName } from '../domain/operators.ts';
+import { connectionSettled } from '../live/connection.ts';
 import { feedHealthy, feedState } from '../live/feed.ts';
+import type { Lookups } from '../live/lookups.ts';
 import { canonicalJson } from '../live/updater.ts';
 import type { Logger } from '../logger.ts';
 import { DEFAULT_PREFS } from '../modules/devices/schemas.ts';
-import type { LiveStatus } from '../modules/journeys/schemas.ts';
+import type { ConnectionStatus, LiveStatus } from '../modules/journeys/schemas.ts';
+import { connectionAfter, legViewOf } from '../modules/journeys/service.ts';
+import { findAlternatives } from '../modules/trips/alternatives.ts';
 import type { CallingPoint } from '../modules/trains/schemas.ts';
 import {
   baselineOf,
   planAlerts,
+  planConnectionAlert,
   planLeaveNow,
   planMorningSummary,
   planStopAlarm,
@@ -53,6 +58,8 @@ export interface NotifierOptions {
   bundleId: string;
   /** Darwin is configured: alerts then wait for a healthy feed. */
   darwinEnabled: boolean;
+  /** For the live overlay on alternatives offered when a connection is missed. */
+  lookups?: Lookups;
   now?: () => Date;
 }
 
@@ -280,6 +287,70 @@ export function createNotifier(opts: NotifierOptions) {
     }
   }
 
+  /**
+   * Connection alerts for the trips these journeys are legs of: each change is
+   * looked at whenever either of its legs changes. What was told is kept per
+   * change in trips.alert_state; the alert goes to the leg arriving at the change.
+   */
+  async function processConnections(journeys: JourneyForPush[]) {
+    const tripIds = [...new Set(journeys.flatMap((j) => (j.trip_id ? [j.trip_id] : [])))];
+    if (!tripIds.length) return;
+    const trips = await db.selectFrom('trips').select(['id', 'alert_state']).where('id', 'in', tripIds).execute();
+    const legIds = await db.selectFrom('journeys').select('id').where('trip_id', 'in', tripIds).execute();
+    const allLegs = (await loadJourneys(legIds.map((r) => r.id))).sort((a, b) => a.leg! - b.leg!);
+    for (const trip of trips) {
+      try {
+        const legs = allLegs.filter((l) => l.trip_id === trip.id);
+        const told = trip.alert_state as Record<string, z.infer<typeof ConnectionStatus>>;
+        const next = { ...told };
+        for (const [i, a] of legs.slice(0, -1).entries()) {
+          const b = legs[i + 1]!;
+          const c = connectionAfter(a, legs, null);
+          if (!c || b.leg !== a.leg! + 1) continue;
+          const key = String(a.leg);
+          const settled = connectionSettled(legViewOf(a, null), legViewOf(b, null)) || a.archived_at !== null || b.archived_at !== null;
+          // Only worth a lookup when this is about to be told.
+          const missedNews = c.status === 'missed' && told[key] !== undefined && told[key] !== 'missed' && !settled;
+          const alternatives = missedNews ? await findAlternatives(db, opts.lookups, c, b) : [];
+          const bCalls = b.calling_points as CallingPointOut[];
+          const plan = planConnectionAlert(
+            told[key],
+            c,
+            { tripId: trip.id, nextScheduledDeparture: bCalls[b.from_index]!.scheduledDeparture!, nextToName: bCalls[b.to_index]!.name },
+            {
+              enabled: effectivePrefs(a).connections,
+              settled,
+              alternatives: alternatives.map((d) => ({
+                scheduledDeparture: d.scheduledDeparture,
+                expectedDeparture: d.live?.expectedDeparture ?? null,
+                scheduledArrival: d.arrival?.scheduledArrival ?? null,
+              })),
+            },
+          );
+          next[key] = plan.next;
+          if (!plan.alert) continue;
+          const payload = { ...alertPayload(a.id, plan.alert), tripId: trip.id };
+          const logId = await logPush(a.id, 'alert', plan.alert.kind, plan.alert.dedupeKey, payload);
+          if (!logId) continue; // already sent
+          const expiration = Math.floor(now().getTime() / 1000) + 3600;
+          const { outcome } = await deliver(
+            logId,
+            { pushType: 'alert', topic: bundleId, priority: 10, payload, expiration, collapseId: plan.alert.collapseId ?? undefined },
+            a.apns_token,
+            a.apns_env,
+          );
+          await forgetDeadToken(a, outcome);
+          log.info({ journey: a.id, trip: trip.id, status: c.status, outcome }, 'Connection alert');
+        }
+        if (canonicalJson(next) !== canonicalJson(told)) {
+          await db.updateTable('trips').set({ alert_state: JSON.stringify(next) }).where('id', '=', trip.id).execute();
+        }
+      } catch (err) {
+        log.error({ err, trip: trip.id }, 'Connection alerts failed');
+      }
+    }
+  }
+
   async function forgetDeadToken(j: JourneyForPush, outcome: PushOutcome) {
     if (outcome !== 'unregistered') return;
     await db.updateTable('devices').set({ apns_token: null }).where('id', '=', j.device_id).where('apns_token', '=', j.apns_token).execute();
@@ -367,6 +438,7 @@ export function createNotifier(opts: NotifierOptions) {
           log.error({ err, journey: j.id }, 'Push failed');
         }
       });
+      if (alertsOn) await processConnections(journeys);
     }
   }
 

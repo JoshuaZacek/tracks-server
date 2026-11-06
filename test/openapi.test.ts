@@ -7,6 +7,7 @@ import * as journeys from '../src/modules/journeys/schemas.ts';
 import * as templates from '../src/modules/journey-templates/schemas.ts';
 import * as stations from '../src/modules/stations/schemas.ts';
 import * as trains from '../src/modules/trains/schemas.ts';
+import * as trips from '../src/modules/trips/schemas.ts';
 import * as common from '../src/http/schemas.ts';
 import * as system from '../src/modules/system/routes.ts';
 
@@ -16,7 +17,7 @@ const doc = buildOpenApiDocument(routes);
 const components = doc.components!.schemas as Record<string, JsonSchema>;
 
 /** Every exported zod object schema with an OpenAPI component name. */
-const named = [devices, journeys, templates, stations, trains, common, system]
+const named = [devices, journeys, templates, stations, trains, trips, common, system]
   .flatMap((m) => Object.values(m))
   .filter((s): s is z.ZodObject => s instanceof z.ZodObject && typeof s.meta()?.id === 'string');
 

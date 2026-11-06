@@ -3,6 +3,7 @@ import type { z } from 'zod';
 import { darwinEnabled, type AppDeps } from '../../app.ts';
 import type { FeedState } from '../../darwin/store.ts';
 import { pollSeconds } from '../../live/compute.ts';
+import { computeConnection, type LegView } from '../../live/connection.ts';
 import { feedHealthy, feedState } from '../../live/feed.ts';
 import { updateJourneys } from '../../live/updater.ts';
 import { baselineOf, stopAlarmArrival } from '../../push/alerts.ts';
@@ -14,6 +15,7 @@ import { ApiError } from '../../http/errors.ts';
 import { toUkIso } from '../../time.ts';
 import type { CallingPoint, RoutePoint } from '../trains/schemas.ts';
 import { getTrain } from '../trains/service.ts';
+import { tidyTrips } from '../trips/legs.ts';
 import type { CreateJourneyRequest, Journey, JourneyList, JourneyListItem, JourneyPrefsUpdate, LiveStatus, LiveSummary } from './schemas.ts';
 
 type CallingPointOut = z.input<typeof CallingPoint>;
@@ -44,7 +46,7 @@ export interface SaveDeps {
 
 export const saveDepsOf = (deps: AppDeps): SaveDeps => ({ db: deps.db, lookups: deps.lookups, now: deps.now, darwinEnabled: darwinEnabled(deps) });
 
-async function readContext(deps: AppDeps | SaveDeps): Promise<ReadContext> {
+export async function readContext(deps: AppDeps | SaveDeps): Promise<ReadContext> {
   const enabled = 'config' in deps ? darwinEnabled(deps) : deps.darwinEnabled;
   return { now: deps.now(), darwinEnabled: enabled, feed: enabled ? await feedState(deps.db) : null };
 }
@@ -127,9 +129,53 @@ function baseOf(row: JourneyRow) {
   };
 }
 
-export function toJourney(row: JourneyRow, rc: ReadContext): z.input<typeof Journey> {
+// ---- trips ----------------------------------------------------------------------
+
+/** Every leg of the trips some journeys belong to, by trip id, in leg order. */
+export type TripLegs = Map<string, JourneyRow[]>;
+
+export async function loadTripLegs(db: Db, rows: readonly JourneyRow[]): Promise<TripLegs> {
+  const ids = [...new Set(rows.flatMap((r) => (r.trip_id ? [r.trip_id] : [])))];
+  const trips: TripLegs = new Map();
+  if (!ids.length) return trips;
+  const legs = await db.selectFrom('journeys').selectAll().where('trip_id', 'in', ids).orderBy('leg').execute();
+  for (const leg of legs) trips.set(leg.trip_id!, [...(trips.get(leg.trip_id!) ?? []), leg]);
+  return trips;
+}
+
+/** A journey as a leg of a connection: its live status as read now, and its timetable at either end. */
+export function legViewOf(row: JourneyRow, rc: ReadContext | null): LegView {
+  const calls = row.calling_points as CallingPointOut[];
+  return {
+    status: rc ? liveStatusOf(row, rc) : upgradeStored(row.status as LiveStatusOut | null),
+    scheduledDeparture: calls[row.from_index]!.scheduledDeparture!,
+    scheduledArrival: calls[row.to_index]!.scheduledArrival!,
+    bookedDeparturePlatform: row.booked_platform,
+    bookedArrivalPlatform: calls[row.to_index]!.bookedPlatform,
+  };
+}
+
+const stationAt = (row: JourneyRow, index: number) => {
+  const c = (row.calling_points as CallingPointOut[])[index]!;
+  return { crs: c.crs, name: c.name, lat: c.lat, lon: c.lon };
+};
+
+/** The change from leg `row` to the next leg of its trip (null for the last leg). */
+export function connectionAfter(row: JourneyRow, legs: readonly JourneyRow[], rc: ReadContext | null) {
+  const next = legs.find((l) => l.leg === row.leg! + 1);
+  return next ? computeConnection(row.leg!, stationAt(row, row.to_index), legViewOf(row, rc), legViewOf(next, rc)) : null;
+}
+
+function tripPartsOf(row: JourneyRow, trips: TripLegs, rc: ReadContext) {
+  const legs = row.trip_id && row.leg ? trips.get(row.trip_id) : undefined;
+  if (!legs || legs.length < 2) return { trip: null, connection: null };
+  return { trip: { id: row.trip_id!, leg: row.leg!, legs: legs.length }, connection: connectionAfter(row, legs, rc) };
+}
+
+export function toJourney(row: JourneyRow, rc: ReadContext, trips: TripLegs = new Map()): z.input<typeof Journey> {
   return {
     ...baseOf(row),
+    ...tripPartsOf(row, trips, rc),
     callingPoints: row.calling_points as CallingPointOut[],
     fromIndex: row.from_index,
     toIndex: row.to_index,
@@ -138,7 +184,16 @@ export function toJourney(row: JourneyRow, rc: ReadContext): z.input<typeof Jour
   };
 }
 
-const toListItem = (row: JourneyRow, rc: ReadContext): z.input<typeof JourneyListItem> => ({ ...baseOf(row), live: liveSummaryOf(row, rc) });
+const toListItem = (row: JourneyRow, rc: ReadContext, trips: TripLegs): z.input<typeof JourneyListItem> => ({
+  ...baseOf(row),
+  ...tripPartsOf(row, trips, rc),
+  live: liveSummaryOf(row, rc),
+});
+
+/** toJourney for one journey, loading its trip. */
+async function journeyOut(db: Db, row: JourneyRow, rc: ReadContext) {
+  return toJourney(row, rc, await loadTripLegs(db, [row]));
+}
 
 /**
  * A journey is past once it has arrived, or once its scheduled arrival has gone
@@ -171,7 +226,8 @@ export async function listJourneys(deps: AppDeps, device: DeviceRow, scope: 'upc
       for (const c of candidates) if (c !== null && c > 0) soonest = soonest === null ? c : Math.min(soonest, c);
     }
   }
-  return { journeys: rows.map((r) => toListItem(r, rc)), nextPollSeconds: soonest === null ? null : clampPoll(soonest) };
+  const trips = await loadTripLegs(deps.db, rows);
+  return { journeys: rows.map((r) => toListItem(r, rc, trips)), nextPollSeconds: soonest === null ? null : clampPoll(soonest) };
 }
 
 export async function findOwned(deps: Pick<AppDeps, 'db'>, device: DeviceRow, id: string): Promise<JourneyRow> {
@@ -183,7 +239,7 @@ export async function findOwned(deps: Pick<AppDeps, 'db'>, device: DeviceRow, id
 
 export async function getJourney(deps: AppDeps, device: DeviceRow, id: string) {
   const row = await findOwned(deps, device, id);
-  return toJourney(row, await readContext(deps));
+  return journeyOut(deps.db, row, await readContext(deps));
 }
 
 export async function getJourneyLive(deps: AppDeps, device: DeviceRow, id: string) {
@@ -282,7 +338,7 @@ export async function saveJourney(deps: SaveDeps, deviceId: string, body: z.outp
         .executeTakeFirstOrThrow();
     }
   }
-  return { journey: toJourney(journey, rc), created: inserted };
+  return { journey: await journeyOut(deps.db, journey, rc), created: inserted };
 }
 
 export async function updateJourney(
@@ -311,9 +367,9 @@ export async function updateJourney(
   }
   if (body.archived !== undefined) changes.archived_at = body.archived ? (row.archived_at ?? deps.now()) : null;
   const rc = await readContext(deps);
-  if (!Object.keys(changes).length) return toJourney(row, rc);
+  if (!Object.keys(changes).length) return journeyOut(deps.db, row, rc);
   const updated = await deps.db.updateTable('journeys').set(changes).where('id', '=', row.id).returningAll().executeTakeFirstOrThrow();
-  return toJourney(updated, rc);
+  return journeyOut(deps.db, updated, rc);
 }
 
 /** Per-journey overrides with an update applied: a value sets one, null removes it, omitted leaves it. */
@@ -326,9 +382,13 @@ export function applyPrefsUpdate(current: Record<string, boolean | number>, upda
   return prefs;
 }
 
+/** A leg of a trip goes from it too: the rest stay linked while two or more still chain. */
 export async function deleteJourney(deps: AppDeps, device: DeviceRow, id: string) {
-  const result = await deps.db.deleteFrom('journeys').where('id', '=', id).where('device_id', '=', device.id).executeTakeFirst();
-  if (!result.numDeletedRows) throw ApiError.notFound('journey_not_found', 'No such journey');
+  await deps.db.transaction().execute(async (trx) => {
+    const deleted = await trx.deleteFrom('journeys').where('id', '=', id).where('device_id', '=', device.id).returning('trip_id').executeTakeFirst();
+    if (!deleted) throw ApiError.notFound('journey_not_found', 'No such journey');
+    await tidyTrips(trx, [deleted.trip_id]);
+  });
 }
 
 /** The app started a Live Activity for this journey (or iOS rotated its token): push updates to it. */

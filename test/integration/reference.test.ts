@@ -33,7 +33,7 @@ describe('with the fixture timetable', () => {
     // Twice: the second import must swap cleanly over the first.
     await importSchedule(config.databaseUrl, FIXTURE, quiet);
     const summary = await importSchedule(config.databaseUrl, FIXTURE, quiet);
-    expect(summary).toMatchObject({ schedules: 8, passengerSchedules: 6, unmappedCalls: 0 });
+    expect(summary).toMatchObject({ schedules: 9, passengerSchedules: 7, unmappedCalls: 0 });
     resetScheduleCache();
     // Knowledgebase coordinates for a few stations (normally fetched by the worker).
     const coords: [string, number, number][] = [

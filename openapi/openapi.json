@@ -52,6 +52,8 @@
                   "train_not_running",
                   "journey_not_found",
                   "station_not_on_route",
+                  "trip_not_found",
+                  "not_connected",
                   "schedule_not_loaded",
                   "rate_limited",
                   "not_implemented",
@@ -494,6 +496,10 @@
           "leaveNow": {
             "type": "boolean",
             "description": "Journeys with travelMinutes: an alert when it is time to leave for the station, moved later if the train runs late (kind leave_now)"
+          },
+          "connections": {
+            "type": "boolean",
+            "description": "Trips: an alert when a change becomes at risk or missed (with the next train), and when it is back on (kind connection)"
           }
         },
         "required": [
@@ -505,7 +511,8 @@
           "delayThresholdMinutes",
           "liveActivity",
           "morningSummary",
-          "leaveNow"
+          "leaveNow",
+          "connections"
         ]
       },
       "UpdateDeviceRequest": {
@@ -590,6 +597,10 @@
           "leaveNow": {
             "type": "boolean",
             "description": "Journeys with travelMinutes: an alert when it is time to leave for the station, moved later if the train runs late (kind leave_now)"
+          },
+          "connections": {
+            "type": "boolean",
+            "description": "Trips: an alert when a change becomes at risk or missed (with the next train), and when it is back on (kind connection)"
           }
         }
       },
@@ -1223,6 +1234,28 @@
             "maximum": 240,
             "description": "Minutes to get to the boarding station (for the leave_now alert)"
           },
+          "trip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripLink"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The trip (a journey with changes) this is a leg of; null when on its own"
+          },
+          "connection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Connection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The change from this leg to the next one of its trip; null for the last leg or no trip"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1257,6 +1290,8 @@
           "prefs",
           "templateId",
           "travelMinutes",
+          "trip",
+          "connection",
           "createdAt",
           "archivedAt",
           "live"
@@ -1297,8 +1332,163 @@
           },
           "leaveNow": {
             "type": "boolean"
+          },
+          "connections": {
+            "type": "boolean",
+            "description": "Connection alerts for the change after this leg"
           }
         }
+      },
+      "TripLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "leg": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1 for the first train"
+          },
+          "legs": {
+            "type": "integer",
+            "minimum": 2,
+            "description": "Trains in the trip"
+          }
+        },
+        "required": [
+          "id",
+          "leg",
+          "legs"
+        ]
+      },
+      "Connection": {
+        "type": "object",
+        "properties": {
+          "leg": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The leg arriving at the change station (the next leg is leg + 1)"
+          },
+          "station": {
+            "type": "object",
+            "properties": {
+              "crs": {
+                "type": "string",
+                "pattern": "^[A-Za-z]{3}$",
+                "description": "Three-letter station (CRS) code",
+                "example": "KGX"
+              },
+              "name": {
+                "type": "string",
+                "example": "London Kings Cross"
+              },
+              "lat": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "WGS84 latitude; null until Knowledgebase has located the station"
+              },
+              "lon": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "crs",
+              "name",
+              "lat",
+              "lon"
+            ],
+            "description": "Where I change trains"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConnectionStatus"
+          },
+          "message": {
+            "type": "string",
+            "description": "Short summary, e.g. \"8 min to change\" or \"The 17:55 is cancelled\"",
+            "example": "8 min to change"
+          },
+          "arrival": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this leg gets to the change station (actual, else expected, else scheduled)",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "arrivalPlatform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "departure": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the next leg leaves the change station (actual, else expected, else scheduled)",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "departurePlatform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minimumChangeMinutes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "marginMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Minutes to spare after the minimum change time (negative = short); null when either train is cancelled"
+          },
+          "scheduledMarginMinutes": {
+            "type": "integer",
+            "description": "The same by the timetable"
+          },
+          "cancelled": {
+            "type": "boolean",
+            "description": "This leg no longer reaches the change station, or the next leg no longer leaves it"
+          }
+        },
+        "required": [
+          "leg",
+          "station",
+          "status",
+          "message",
+          "arrival",
+          "arrivalPlatform",
+          "departure",
+          "departurePlatform",
+          "minimumChangeMinutes",
+          "marginMinutes",
+          "scheduledMarginMinutes",
+          "cancelled"
+        ]
+      },
+      "ConnectionStatus": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "tight",
+          "at_risk",
+          "missed"
+        ]
       },
       "LiveSummary": {
         "type": "object",
@@ -1475,6 +1665,28 @@
             "maximum": 240,
             "description": "Minutes to get to the boarding station (for the leave_now alert)"
           },
+          "trip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripLink"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The trip (a journey with changes) this is a leg of; null when on its own"
+          },
+          "connection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Connection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The change from this leg to the next one of its trip; null for the last leg or no trip"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1532,6 +1744,8 @@
           "prefs",
           "templateId",
           "travelMinutes",
+          "trip",
+          "connection",
           "createdAt",
           "archivedAt",
           "callingPoints",
@@ -2059,6 +2273,12 @@
               "boolean",
               "null"
             ]
+          },
+          "connections": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         }
       },
@@ -2352,6 +2572,206 @@
             "$ref": "#/components/schemas/JourneyPrefsUpdate"
           }
         }
+      },
+      "Trip": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Journey"
+            },
+            "description": "In travelling order: leg 1 first"
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TripConnection"
+            },
+            "description": "One per change: connections[i] is from legs[i] to legs[i + 1]"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "id",
+          "legs",
+          "connections",
+          "createdAt"
+        ]
+      },
+      "TripConnection": {
+        "type": "object",
+        "properties": {
+          "leg": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The leg arriving at the change station (the next leg is leg + 1)"
+          },
+          "station": {
+            "type": "object",
+            "properties": {
+              "crs": {
+                "type": "string",
+                "pattern": "^[A-Za-z]{3}$",
+                "description": "Three-letter station (CRS) code",
+                "example": "KGX"
+              },
+              "name": {
+                "type": "string",
+                "example": "London Kings Cross"
+              },
+              "lat": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "WGS84 latitude; null until Knowledgebase has located the station"
+              },
+              "lon": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "crs",
+              "name",
+              "lat",
+              "lon"
+            ],
+            "description": "Where I change trains"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConnectionStatus"
+          },
+          "message": {
+            "type": "string",
+            "description": "Short summary, e.g. \"8 min to change\" or \"The 17:55 is cancelled\"",
+            "example": "8 min to change"
+          },
+          "arrival": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this leg gets to the change station (actual, else expected, else scheduled)",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "arrivalPlatform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "departure": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the next leg leaves the change station (actual, else expected, else scheduled)",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "departurePlatform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minimumChangeMinutes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "marginMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Minutes to spare after the minimum change time (negative = short); null when either train is cancelled"
+          },
+          "scheduledMarginMinutes": {
+            "type": "integer",
+            "description": "The same by the timetable"
+          },
+          "cancelled": {
+            "type": "boolean",
+            "description": "This leg no longer reaches the change station, or the next leg no longer leaves it"
+          },
+          "alternatives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Departure"
+            },
+            "description": "When at_risk or missed: up to 3 later trains from the change station to the next leg's destination that I can still make (by expected departure, not cancelled), soonest first; `arrival` is at that destination. Empty otherwise."
+          }
+        },
+        "required": [
+          "leg",
+          "station",
+          "status",
+          "message",
+          "arrival",
+          "arrivalPlatform",
+          "departure",
+          "departurePlatform",
+          "minimumChangeMinutes",
+          "marginMinutes",
+          "scheduledMarginMinutes",
+          "cancelled",
+          "alternatives"
+        ]
+      },
+      "CreateTripRequest": {
+        "type": "object",
+        "properties": {
+          "journeyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 2,
+            "maxItems": 6,
+            "description": "Journeys of this device in travelling order. Each must leave from where the one before arrives, after it is due there. A journey already in another trip moves to this one (a trip left with one leg goes)."
+          }
+        },
+        "required": [
+          "journeyIds"
+        ]
+      },
+      "ReplaceLegRequest": {
+        "type": "object",
+        "properties": {
+          "trainUid": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{6}$",
+            "description": "Timetable train UID (CIF_train_uid)",
+            "example": "L12345"
+          },
+          "runDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Calendar date (YYYY-MM-DD), UK local",
+            "example": "2026-11-03"
+          }
+        },
+        "required": [
+          "trainUid",
+          "runDate"
+        ]
       }
     },
     "parameters": {}
@@ -4440,6 +4860,387 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/trips": {
+      "post": {
+        "operationId": "createTrip",
+        "summary": "Link journeys into a trip with changes",
+        "description": "The journeys become the legs of one trip, in the order given, and the server follows each change (\"Will I make it?\"): every journey and journey list item then carries `trip` and, but for the last leg, `connection`. A `connection` alert is sent when a change becomes at_risk or missed (with the next train that works) and when it is back on. To add a connecting train to a trip, send all its legs plus the new one. 404 when a journey isn't this device's; 422 `not_connected` when a leg does not leave from where the one before arrives, or leaves before it is due there.",
+        "tags": [
+          "Trips"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTripRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The trip",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/trips/{id}": {
+      "get": {
+        "operationId": "getTrip",
+        "summary": "A trip: each leg with its live status, and each change with alternatives",
+        "tags": [
+          "Trips"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The trip",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteTrip",
+        "summary": "Unlink a trip",
+        "description": "Its journeys stay, each on its own.",
+        "tags": [
+          "Trips"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Unlinked"
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/trips/{id}/legs/{leg}": {
+      "put": {
+        "operationId": "replaceTripLeg",
+        "summary": "Switch a leg to another train",
+        "description": "Saves a journey on the given train between the same stations as leg `leg`, puts it in the trip in place of that leg and deletes the old journey (end its Live Activity on the device). Use it with one of `connections[].alternatives`. 404 for an unknown trip or leg, or a train not running; 422 `station_not_on_route` when the train does not call at both stations, `not_connected` when it leaves before the leg before is due.",
+        "tags": [
+          "Trips"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 6
+            },
+            "required": true,
+            "name": "leg",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceLegRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The trip with the new leg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trip"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {

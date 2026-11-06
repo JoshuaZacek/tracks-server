@@ -12,6 +12,8 @@ export const ERROR_CODES = [
   'train_not_running',
   'journey_not_found',
   'station_not_on_route',
+  'trip_not_found',
+  'not_connected',
   'schedule_not_loaded',
   'rate_limited',
   'not_implemented',
@@ -50,7 +52,7 @@ export class ApiError extends Error {
     return new ApiError(401, 'unauthorized', message);
   }
 
-  static notFound(code: Extract<ErrorCode, 'not_found' | 'station_not_found' | 'train_not_running' | 'journey_not_found'>, message: string) {
+  static notFound(code: Extract<ErrorCode, 'not_found' | 'station_not_found' | 'train_not_running' | 'journey_not_found' | 'trip_not_found'>, message: string) {
     return new ApiError(404, code, message);
   }
 

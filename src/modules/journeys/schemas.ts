@@ -114,6 +114,47 @@ export const LiveSummary = z
   })
   .meta({ id: 'LiveSummary' });
 
+// ---- connections (trips) -------------------------------------------------------
+
+/**
+ * - ok:      at least 3 min to spare after the minimum change time
+ * - tight:   makes the minimum change time, with under 3 min to spare
+ * - at_risk: the next train leaves after I arrive, but with less than the minimum change time
+ * - missed:  the next train leaves before I arrive, or either train is cancelled
+ */
+export const ConnectionStatus = z.enum(['ok', 'tight', 'at_risk', 'missed']).meta({ id: 'ConnectionStatus' });
+
+/** The change from one leg of a trip to the next, from the best times known (actual, else expected, else scheduled). */
+export const Connection = z
+  .object({
+    leg: z.number().int().min(1).meta({ description: 'The leg arriving at the change station (the next leg is leg + 1)' }),
+    station: Station.meta({ description: 'Where I change trains' }),
+    status: ConnectionStatus,
+    message: z.string().meta({ description: 'Short summary, e.g. "8 min to change" or "The 17:55 is cancelled"', example: '8 min to change' }),
+    arrival: DateTime.meta({ description: 'When this leg gets to the change station (actual, else expected, else scheduled)' }),
+    arrivalPlatform: orNull(Platform),
+    departure: DateTime.meta({ description: 'When the next leg leaves the change station (actual, else expected, else scheduled)' }),
+    departurePlatform: orNull(Platform),
+    minimumChangeMinutes: z.number().int().nonnegative(),
+    marginMinutes: z
+      .number()
+      .int()
+      .nullable()
+      .meta({ description: 'Minutes to spare after the minimum change time (negative = short); null when either train is cancelled' }),
+    scheduledMarginMinutes: z.number().int().meta({ description: 'The same by the timetable' }),
+    cancelled: z.boolean().meta({ description: 'This leg no longer reaches the change station, or the next leg no longer leaves it' }),
+  })
+  .meta({ id: 'Connection' });
+
+/** Which trip a journey belongs to; null for a journey on its own. */
+export const TripLink = z
+  .object({
+    id: Uuid,
+    leg: z.number().int().min(1).meta({ description: '1 for the first train' }),
+    legs: z.number().int().min(2).meta({ description: 'Trains in the trip' }),
+  })
+  .meta({ id: 'TripLink' });
+
 // ---- journeys -------------------------------------------------------------------
 
 /** Time to get to the boarding station: the leave_now alert fires this long (plus 2 min) before departure. */
@@ -138,6 +179,7 @@ export const JourneyPrefs = z
       }),
     morningSummary: z.boolean().optional(),
     leaveNow: z.boolean().optional(),
+    connections: z.boolean().optional().meta({ description: 'Connection alerts for the change after this leg' }),
   })
   .meta({ id: 'JourneyPrefs' });
 
@@ -156,6 +198,8 @@ const JourneyBase = z.object({
   prefs: JourneyPrefs,
   templateId: Uuid.nullable().meta({ description: 'The regular journey this was made from; null when saved by hand or no longer repeating' }),
   travelMinutes: TravelMinutes.nullable(),
+  trip: orNull(TripLink).meta({ description: 'The trip (a journey with changes) this is a leg of; null when on its own' }),
+  connection: orNull(Connection).meta({ description: 'The change from this leg to the next one of its trip; null for the last leg or no trip' }),
   createdAt: DateTime,
   archivedAt: DateTime.nullable(),
 });
@@ -204,6 +248,7 @@ export const JourneyPrefsUpdate = z
     stopAlarm: z.boolean().nullable().optional(),
     morningSummary: z.boolean().nullable().optional(),
     leaveNow: z.boolean().nullable().optional(),
+    connections: z.boolean().nullable().optional(),
   })
   .meta({ id: 'JourneyPrefsUpdate' });
 
