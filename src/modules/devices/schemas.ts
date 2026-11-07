@@ -17,6 +17,7 @@ export const NotificationPrefs = z
     connections: z
       .boolean()
       .meta({ description: 'Trips: an alert when a change becomes at risk or missed (with the next train), and when it is back on (kind connection)' }),
+    divides: z.boolean().meta({ description: 'Trains that divide on my route: an alert 30 min before departure saying which part to be in (kind divides)' }),
   })
   .meta({ id: 'NotificationPrefs' });
 
@@ -31,6 +32,7 @@ export const DEFAULT_PREFS: z.output<typeof NotificationPrefs> = {
   morningSummary: true,
   leaveNow: true,
   connections: true,
+  divides: true,
 };
 
 const ApnsEnvironment = z.enum(['sandbox', 'production']).meta({ id: 'ApnsEnvironment' });

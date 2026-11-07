@@ -14,9 +14,11 @@ import { connectionAfter, legViewOf } from '../modules/journeys/service.ts';
 import { findAlternatives } from '../modules/trips/alternatives.ts';
 import type { CallingPoint } from '../modules/trains/schemas.ts';
 import {
+  DIVIDES_BEFORE_MIN,
   baselineOf,
   planAlerts,
   planConnectionAlert,
+  planDivides,
   planLeaveNow,
   planMorningSummary,
   planStopAlarm,
@@ -253,8 +255,9 @@ export function createNotifier(opts: NotifierOptions) {
       // Time rules for regular journeys and travel times (the tick brings these journeys round when due).
       const summary = planMorningSummary(next, status, facts, j.summary_time, prefs.morningSummary, at);
       const leave = planLeaveNow(summary.next, status, facts, j.travel_minutes, prefs.leaveNow, at);
-      next = leave.next;
-      for (const alert of [summary.alert, leave.alert]) if (alert) alerts.push(alert);
+      const divides = planDivides(leave.next, status, facts, prefs.divides, at);
+      next = divides.next;
+      for (const alert of [summary.alert, leave.alert, divides.alert]) if (alert) alerts.push(alert);
     }
     if (canonicalJson(next) !== canonicalJson(told)) {
       await db.updateTable('journeys').set({ alert_state: JSON.stringify(next) }).where('id', '=', j.id).execute();
@@ -513,8 +516,8 @@ export function createNotifier(opts: NotifierOptions) {
   }
 
   /**
-   * Time-driven work: the "approaching" alert, the morning summary and leave-now
-   * alerts once due, Live Activity updates held back by the rate limit or a
+   * Time-driven work: the "approaching" alert, the morning summary, leave-now and
+   * divides alerts once due, Live Activity updates held back by the rate limit or a
    * failed push, push-to-start, and regular-journey alerts. The stop alarm needs
    * nothing here: its pushes follow changes in the arrival estimate, which come
    * through journeysChanged (or `held`, picked up once live data is healthy).
@@ -536,6 +539,8 @@ export function createNotifier(opts: NotifierOptions) {
             AND ((j.date::text || ' ' || t.summary_time)::timestamp AT TIME ZONE 'Europe/London') <= ${at})
           OR (j.travel_minutes IS NOT NULL AND coalesce((j.alert_state->>'leaveNow')::boolean, false) = false
             AND j.scheduled_departure - make_interval(mins => j.travel_minutes + 12) <= ${at})
+          OR (jsonb_typeof(j.status->'divides') = 'object' AND coalesce((j.alert_state->>'divides')::boolean, false) = false
+            AND j.scheduled_departure - make_interval(mins => ${DIVIDES_BEFORE_MIN}) <= ${at})
         )`.execute(db);
     await processJourneys(rows.map((r) => r.id));
     if (await liveDataHealthy()) await autoStart();

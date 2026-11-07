@@ -1,4 +1,4 @@
-import { sql, type RawBuilder } from 'kysely';
+import { sql, type RawBuilder, type Selectable } from 'kysely';
 import type { z } from 'zod';
 import { darwinEnabled, type AppDeps } from '../../app.ts';
 import type { FeedState } from '../../darwin/store.ts';
@@ -8,7 +8,7 @@ import { feedHealthy, feedState } from '../../live/feed.ts';
 import { updateJourneys } from '../../live/updater.ts';
 import { baselineOf, stopAlarmArrival } from '../../push/alerts.ts';
 import type { Db } from '../../db/client.ts';
-import type { DeviceRow, JourneyRow } from '../../db/types.ts';
+import type { DarwinStationMessagesTable, DeviceRow, JourneyRow } from '../../db/types.ts';
 import type { Lookups } from '../../live/lookups.ts';
 import { operatorName } from '../../domain/operators.ts';
 import { ApiError } from '../../http/errors.ts';
@@ -16,7 +16,16 @@ import { toUkIso } from '../../time.ts';
 import type { CallingPoint, RoutePoint } from '../trains/schemas.ts';
 import { getTrain } from '../trains/service.ts';
 import { tidyTrips } from '../trips/legs.ts';
-import type { CreateJourneyRequest, Journey, JourneyList, JourneyListItem, JourneyPrefsUpdate, LiveStatus, LiveSummary } from './schemas.ts';
+import type {
+  CreateJourneyRequest,
+  Journey,
+  JourneyList,
+  JourneyListItem,
+  JourneyPrefsUpdate,
+  LiveStatus,
+  LiveSummary,
+  StationMessage,
+} from './schemas.ts';
 
 type CallingPointOut = z.input<typeof CallingPoint>;
 type LiveStatusOut = z.input<typeof LiveStatus>;
@@ -79,6 +88,8 @@ export function liveStatusOf(row: JourneyRow, rc: ReadContext): LiveStatusOut {
     service: null,
     progress: null,
     position: null,
+    divides: null,
+    loading: null,
   };
   const stale = rc.darwinEnabled && !feedHealthy(rc.feed, rc.now.getTime()) && ['scheduled', 'live', 'departed'].includes(base.state);
   return {
@@ -103,6 +114,7 @@ function liveSummaryOf(row: JourneyRow, rc: ReadContext): z.input<typeof LiveSum
     isCancelled: status.service?.isCancelled ?? status.state === 'cancelled',
     stale: status.stale,
     checkedAt: row.status ? status.checkedAt : null,
+    loading: status.loading ?? null,
   };
 }
 
@@ -172,7 +184,53 @@ function tripPartsOf(row: JourneyRow, trips: TripLegs, rc: ReadContext) {
   return { trip: { id: row.trip_id!, leg: row.leg!, legs: legs.length }, connection: connectionAfter(row, legs, rc) };
 }
 
-export function toJourney(row: JourneyRow, rc: ReadContext, trips: TripLegs = new Map()): z.input<typeof Journey> {
+// ---- station messages ---------------------------------------------------------
+
+type StationMessageRow = Selectable<DarwinStationMessagesTable>;
+const SEVERITY = ['normal', 'minor', 'major', 'severe'] as const;
+
+/**
+ * Darwin's station messages (OW) shown at any of these journeys' boarding
+ * stations or destinations, in one query. Read when a journey is fetched, not
+ * kept in its live status, so they never count as a status change or alert.
+ */
+export async function loadStationMessages(db: Db, rows: readonly JourneyRow[]): Promise<StationMessageRow[]> {
+  const crs = [...new Set(rows.flatMap((r) => [r.from_crs, r.to_crs]))];
+  if (!crs.length) return [];
+  return db
+    .selectFrom('darwin_station_messages')
+    .selectAll()
+    .where('suppress', '=', false)
+    .where(sql<boolean>`crs && ${crs}::text[]`)
+    .execute();
+}
+
+/** The messages for one journey: at its boarding station or destination, most severe first, then newest. */
+export function stationMessagesOf(row: JourneyRow, messages: readonly StationMessageRow[]): z.input<typeof StationMessage>[] {
+  return messages
+    .flatMap((m) => {
+      const stations = [row.from_crs, row.to_crs].filter((c) => m.crs.includes(c));
+      return stations.length ? [{ m, stations }] : [];
+    })
+    .sort((a, b) => b.m.severity - a.m.severity || b.m.updated_at.getTime() - a.m.updated_at.getTime() || a.m.id.localeCompare(b.m.id))
+    .map(({ m, stations }) => ({
+      id: m.id,
+      stations,
+      category: m.category,
+      severity: SEVERITY[Math.min(3, Math.max(0, m.severity))]!,
+      text: m.message,
+      url: m.url,
+      updatedAt: toUkIso(m.updated_at),
+    }));
+}
+
+/** A full journey. `messages`: station messages loaded for it (loadStationMessages). */
+export function toJourney(
+  row: JourneyRow,
+  rc: ReadContext,
+  trips: TripLegs,
+  messages: readonly StationMessageRow[],
+): z.input<typeof Journey> {
   return {
     ...baseOf(row),
     ...tripPartsOf(row, trips, rc),
@@ -181,6 +239,7 @@ export function toJourney(row: JourneyRow, rc: ReadContext, trips: TripLegs = ne
     toIndex: row.to_index,
     route: row.route as z.input<typeof RoutePoint>[],
     live: liveStatusOf(row, rc),
+    stationMessages: stationMessagesOf(row, messages),
   };
 }
 
@@ -190,9 +249,10 @@ const toListItem = (row: JourneyRow, rc: ReadContext, trips: TripLegs): z.input<
   live: liveSummaryOf(row, rc),
 });
 
-/** toJourney for one journey, loading its trip. */
+/** toJourney for one journey, loading its trip and station messages. */
 async function journeyOut(db: Db, row: JourneyRow, rc: ReadContext) {
-  return toJourney(row, rc, await loadTripLegs(db, [row]));
+  const [trips, messages] = await Promise.all([loadTripLegs(db, [row]), loadStationMessages(db, [row])]);
+  return toJourney(row, rc, trips, messages);
 }
 
 /**

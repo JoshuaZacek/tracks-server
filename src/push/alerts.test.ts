@@ -5,6 +5,7 @@ import { DEFAULT_PREFS } from '../modules/devices/schemas.ts';
 import {
   baselineOf,
   planAlerts,
+  planDivides,
   planLeaveNow,
   planMorningSummary,
   planStopAlarm,
@@ -344,6 +345,76 @@ describe('planLeaveNow', () => {
     const next = plan(told, status({ delay: 0 })).next;
     expect(next).toMatchObject({ morningSummary: true, leaveNow: true });
     expect(planStopAlarm(next, status(), J, false, at('16:40')).next).toMatchObject({ morningSummary: true, leaveNow: true });
+  });
+});
+
+describe('planDivides', () => {
+  const portion = (destName: string, yours: boolean, note: string | null = null) => ({ destCrs: null, destName, yours, note });
+  const division = (portions: ReturnType<typeof portion>[], message = 'This train divides at Peterborough; only some coaches go to York.') => ({
+    atCrs: 'PBO',
+    atName: 'Peterborough',
+    at: t('17:45'),
+    portions,
+    message,
+  });
+  const oneMine = division([portion('York', true), portion('Lincoln', false)]);
+  const both = division([portion('York', true), portion('Lincoln', true)], 'This train divides at Peterborough; both parts call at York.');
+  const withDivision = (d: ReturnType<typeof division> | null, o: Opts = {}): LiveStatusOut => ({ ...status(o), divides: d });
+  const divides = (told: AlertState, s: LiveStatusOut | null, now: Date, enabled = true) => planDivides(told, s, J, enabled, now);
+
+  it('is sent once, from 30 min before departure, with the division message', () => {
+    expect(divides(quiet, withDivision(oneMine), at('16:29'))).toEqual({ alert: null, next: quiet });
+    const r = divides(quiet, withDivision(oneMine), at('16:30'));
+    expect(r.alert).toEqual({
+      kind: 'divides',
+      dedupeKey: 'divides',
+      title: "17:00 King's Cross to York",
+      body: 'This train divides at Peterborough; only some coaches go to York.',
+      collapseId: null,
+      timeSensitive: false,
+    });
+    expect(r.next).toEqual({ ...quiet, divides: true });
+    expect(divides(r.next, withDivision(oneMine), at('16:45')).alert).toBeNull();
+  });
+
+  it('waits for the expected departure when the train is late', () => {
+    expect(divides(quiet, withDivision(oneMine, { delay: 10 }), at('16:35')).alert).toBeNull();
+    expect(divides(quiet, withDivision(oneMine, { delay: 10 }), at('16:40')).alert).not.toBeNull();
+  });
+
+  it('is not sent when both parts call at my destination (and stays due in case that changes)', () => {
+    expect(divides(quiet, withDivision(both), at('16:40'))).toEqual({ alert: null, next: quiet });
+    expect(divides(quiet, withDivision(oneMine), at('16:41')).alert).not.toBeNull();
+  });
+
+  it('is sent with a coach note, and when Darwin cannot say which part', () => {
+    const note = division([portion('York', true, 'Front 4 coaches'), portion('Lincoln', false)], 'This train divides at Peterborough. Sit in the front 4 coaches for York.');
+    expect(divides(quiet, withDivision(note), at('16:40')).alert?.body).toBe('This train divides at Peterborough. Sit in the front 4 coaches for York.');
+    const unknown = division([portion('Edinburgh', false)], 'This train divides at Peterborough. Check which coaches go to York.');
+    expect(divides(quiet, withDivision(unknown), at('16:40')).alert?.body).toBe('This train divides at Peterborough. Check which coaches go to York.');
+  });
+
+  it('is not sent without a division, once departed, when cancelled, with the preference off, or without live data', () => {
+    expect(divides(quiet, withDivision(null), at('16:40')).alert).toBeNull();
+    // Departed: no longer due, so the tick stops bringing the journey round.
+    expect(divides(quiet, withDivision(oneMine, { state: 'departed', actualDeparture: t('17:00') }), at('17:01'))).toEqual({
+      alert: null,
+      next: { ...quiet, divides: true },
+    });
+    expect(divides(quiet, withDivision(oneMine, { state: 'cancelled', cancelled: true }), at('16:40')).alert).toBeNull();
+    expect(divides(quiet, withDivision(oneMine), at('16:40'), false)).toEqual({ alert: null, next: quiet });
+    expect(divides(quiet, null, at('16:40'))).toEqual({ alert: null, next: quiet });
+  });
+
+  it('planAlerts ignores divides and loading: a status that only differs in them alerts nothing', () => {
+    const told = plan(null, status({ platform: '4' })).next;
+    const loaded: LiveStatusOut = {
+      ...status({ platform: '4' }),
+      divides: oneMine,
+      loading: { percentage: 90, level: 'very_busy', coaches: null, quietestCoaches: [] },
+    };
+    expect(plan(told, loaded)).toEqual({ alerts: [], next: told });
+    expect(plan({ ...told, divides: true }, loaded).next).toMatchObject({ divides: true });
   });
 });
 

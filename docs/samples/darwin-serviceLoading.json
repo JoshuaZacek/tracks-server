@@ -1,72 +1,78 @@
 [
   {
-    "rid": "202611038002548",
-    "tpl": "STFD",
-    "wtd": "05:58",
-    "ptd": "05:58",
-    "loadingPercentage": "5"
+    "rid": "202611077158934",
+    "tpl": "RICHNLL",
+    "wtd": "16:31",
+    "ptd": "16:31",
+    "loadingPercentage": "20"
   },
   {
-    "rid": "202611038002548",
-    "tpl": "HACKNYW",
-    "wta": "06:01",
-    "wtd": "06:01:30",
-    "pta": "06:01",
-    "ptd": "06:01",
-    "loadingPercentage": "6"
+    "rid": "202611077158934",
+    "tpl": "KEWGRDN",
+    "wta": "16:34",
+    "wtd": "16:34:30",
+    "pta": "16:34",
+    "ptd": "16:34",
+    "loadingPercentage": "33"
   },
   {
-    "rid": "202611038002548",
-    "tpl": "HOMRTON",
-    "wta": "06:03:30",
-    "wtd": "06:04",
-    "pta": "06:04",
-    "ptd": "06:04",
-    "loadingPercentage": "7"
+    "rid": "202611077158934",
+    "tpl": "GNRSBRY",
+    "wta": "16:37",
+    "wtd": "16:37:30",
+    "pta": "16:37",
+    "ptd": "16:37",
+    "loadingPercentage": "38"
   },
   {
-    "rid": "202611038002548",
-    "tpl": "HACKNYC",
-    "wta": "06:05:30",
-    "wtd": "06:06:30",
-    "pta": "06:06",
-    "ptd": "06:06",
-    "loadingPercentage": "7"
+    "rid": "202611077158934",
+    "tpl": "SACTON",
+    "wta": "16:39:30",
+    "wtd": "16:40",
+    "pta": "16:40",
+    "ptd": "16:40",
+    "loadingPercentage": "39"
   },
   {
-    "rid": "202611038002548",
-    "tpl": "DALSKLD",
-    "wta": "06:08:30",
-    "wtd": "06:09:30",
-    "pta": "06:09",
-    "ptd": "06:09",
-    "loadingPercentage": "8"
+    "rid": "202611077638123",
+    "tpl": "BHAMMRS",
+    "wtd": "15:43",
+    "ptd": "15:43",
+    "loadingPercentage": "74"
   },
   {
-    "rid": "202611038002548",
-    "tpl": "CNNB",
-    "wta": "06:11",
-    "wtd": "06:11:30",
-    "pta": "06:11",
-    "ptd": "06:11",
-    "loadingPercentage": "8"
-  },
-  {
-    "rid": "202611038002548",
-    "tpl": "HIGHBYA",
-    "wta": "06:13",
-    "wtd": "06:15:30",
-    "pta": "06:15",
-    "ptd": "06:15",
-    "loadingPercentage": "8"
-  },
-  {
-    "rid": "202611038002548",
-    "tpl": "CLDNNRB",
-    "wta": "06:16:30",
-    "wtd": "06:17",
-    "pta": "06:17",
-    "ptd": "06:17",
+    "rid": "202611077622457",
+    "tpl": "WATFJDC",
+    "wtd": "17:00",
+    "ptd": "17:00",
     "loadingPercentage": "9"
+  },
+  {
+    "rid": "202611086736888",
+    "tpl": "ABWDXR",
+    "wtd": "11:54",
+    "ptd": "11:54",
+    "loadingPercentage": "9"
+  },
+  {
+    "rid": "202611086737163",
+    "tpl": "ABWDXR",
+    "wtd": "11:47",
+    "ptd": "11:47",
+    "loadingPercentage": "10"
+  },
+  {
+    "rid": "202611086736877",
+    "tpl": "ABWDXR",
+    "wtd": "11:39",
+    "ptd": "11:39",
+    "loadingPercentage": "10"
+  },
+  {
+    "rid": "202611086737073",
+    "tpl": "ABWDXR",
+    "wtd": "11:32",
+    "ptd": "11:32",
+    "loadingPercentage": "12"
   }
 ]

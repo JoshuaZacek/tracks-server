@@ -19,7 +19,7 @@ export function createTestContext(opts: { now?: () => Date; darwin?: boolean } =
 }
 
 export async function resetData(db: Db) {
-  await sql`TRUNCATE devices, journeys, meta, darwin_services, darwin_locations RESTART IDENTITY CASCADE`.execute(db);
+  await sql`TRUNCATE devices, journeys, meta, darwin_services, darwin_locations, darwin_associations, darwin_formations, darwin_station_messages RESTART IDENTITY CASCADE`.execute(db);
   resetScheduleCache();
   resetFeedCache();
 }

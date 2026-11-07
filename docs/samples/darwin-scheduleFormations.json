@@ -1,0 +1,250 @@
+[
+  {
+    "rid": "202611076736997",
+    "formation": {
+      "fid": "202611076736997-001",
+      "coaches": {
+        "coach": [
+          {
+            "coachNumber": "1",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "2",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "3",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "4",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "5",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "6",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "7",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "8",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "9",
+            "coachClass": "Standard"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "rid": "202611078085418",
+    "formation": {
+      "fid": "202611078085418-002",
+      "coaches": {
+        "coach": [
+          {
+            "coachNumber": "A1",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "A2",
+            "coachClass": "Standard",
+            "toilet": "Standard"
+          },
+          {
+            "coachNumber": "A3",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "NotInService",
+              "": "Accessible"
+            }
+          },
+          {
+            "coachNumber": "A4",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "B1",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "B2",
+            "coachClass": "Standard",
+            "toilet": "Standard"
+          },
+          {
+            "coachNumber": "B3",
+            "coachClass": "Standard",
+            "toilet": "Accessible"
+          },
+          {
+            "coachNumber": "B4",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "rid": "202611076737361",
+    "formation": {
+      "fid": "202611076737361-001",
+      "coaches": {
+        "coach": [
+          {
+            "coachNumber": "1",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "2",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "3",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "4",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "5",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "6",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "7",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "8",
+            "coachClass": "Standard"
+          },
+          {
+            "coachNumber": "9",
+            "coachClass": "Standard"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "rid": "202611078089105",
+    "formation": {
+      "fid": "202611078089105-004",
+      "coaches": {
+        "coach": [
+          {
+            "coachNumber": "A1",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "A2",
+            "coachClass": "Standard",
+            "toilet": "Standard"
+          },
+          {
+            "coachNumber": "A3",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "NotInService",
+              "": "Accessible"
+            }
+          },
+          {
+            "coachNumber": "A4",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "B1",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "B2",
+            "coachClass": "Standard",
+            "toilet": "Standard"
+          },
+          {
+            "coachNumber": "B3",
+            "coachClass": "Standard",
+            "toilet": "Accessible"
+          },
+          {
+            "coachNumber": "B4",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "C1",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          },
+          {
+            "coachNumber": "C2",
+            "coachClass": "Standard",
+            "toilet": "Standard"
+          },
+          {
+            "coachNumber": "C3",
+            "coachClass": "Standard",
+            "toilet": "Accessible"
+          },
+          {
+            "coachNumber": "C4",
+            "coachClass": "Standard",
+            "toilet": {
+              "status": "Unknown",
+              "": "None"
+            }
+          }
+        ]
+      }
+    }
+  }
+]

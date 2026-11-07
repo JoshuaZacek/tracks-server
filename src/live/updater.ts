@@ -34,8 +34,13 @@ export function canonicalJson(value: unknown): string {
   );
 }
 
-/** What matters for "has it changed": everything except when it was computed and the read-time fields. */
-const signature = (s: LiveStatusOut | null) => (s ? canonicalJson({ ...s, checkedAt: null, nextPollSeconds: null, stale: null }) : '');
+/**
+ * What matters for "has it changed": everything except when it was computed and the read-time fields.
+ * Loading counts, so a new loading estimate is stored (and the notifier looks at the journey, but no
+ * alert rests on it). Statuses stored before divides/loading existed compare as if they had them null.
+ */
+const signature = (s: LiveStatusOut | null) =>
+  s ? canonicalJson({ divides: null, loading: null, ...s, checkedAt: null, nextPollSeconds: null, stale: null }) : '';
 
 /**
  * Recomputes the live status of `journeys` from the stored Darwin data and
@@ -45,10 +50,11 @@ const signature = (s: LiveStatusOut | null) => (s ? canonicalJson({ ...s, checke
 export async function updateJourneys(deps: UpdaterDeps, journeys: JourneyRow[]): Promise<JourneyChange[]> {
   if (!journeys.length) return [];
   const lookups = await deps.lookups.ready();
-  const byRid = await loadByRid(deps.db, [...new Set(journeys.flatMap((j) => (j.rid ? [j.rid] : [])))]);
+  const byRid = await loadByRid(deps.db, [...new Set(journeys.flatMap((j) => (j.rid ? [j.rid] : [])))], { extras: true });
   const byTrain = await loadByTrain(
     deps.db,
     journeys.filter((j) => !j.rid).map((j) => ({ uid: j.train_uid, ssd: j.run_date })),
+    { extras: true },
   );
   const now = deps.now();
   const ctx = { ...lookupsOf(lookups), now, darwinEnabled: deps.darwinEnabled, feedHealthy: deps.feedHealthy() };
@@ -84,13 +90,17 @@ const trackable = (db: Db) =>
     .where('archived_at', 'is', null)
     .where('state', 'not in', FINAL_STATES);
 
-/** Journeys on runs a Darwin batch touched: by rid, or by uid + start date while they have no rid yet. */
+/**
+ * Journeys on runs a Darwin batch touched: by rid, or by uid + start date while they have no rid yet.
+ * A touched portion of a dividing train (its calls decide `divides`) brings in journeys on the train it divides from.
+ */
 export async function journeysForRuns(db: Db, touched: { rids: string[]; trains: { uid: string; ssd: string }[] }) {
   if (!touched.rids.length && !touched.trains.length) return [];
   return trackable(db)
     .where((eb) =>
       eb.or([
         eb('rid', '=', eb.fn.any(eb.val(touched.rids))),
+        eb('rid', 'in', eb.selectFrom('darwin_associations').select('main_rid').where('assoc_rid', '=', eb.fn.any(eb.val(touched.rids)))),
         eb.and([
           eb('rid', 'is', null),
           sql<boolean>`(train_uid, run_date) IN (SELECT * FROM unnest(${touched.trains.map((t) => t.uid)}::text[], ${touched.trains.map((t) => t.ssd)}::date[]))`,

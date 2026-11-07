@@ -8,7 +8,7 @@ import { resetFeedCache } from '../../src/live/feed.ts';
 import { journeysDueForTick, journeysForRuns, updateJourneys } from '../../src/live/updater.ts';
 import { createLogger } from '../../src/logger.ts';
 import type { PushRequest, PushResult, PushSender } from '../../src/push/apns.ts';
-import { createNotifier, type Notifier } from '../../src/push/notifier.ts';
+import { contentOf, createNotifier, type Notifier } from '../../src/push/notifier.ts';
 import { createTestContext, registerDevice, resetData } from '../helpers.ts';
 
 const FIXTURE = fileURLToPath(new URL('../fixtures/schedule-mini.ndjson', import.meta.url));
@@ -360,6 +360,7 @@ describe('Live Activities', () => {
       nextStopName: null,
       legDepartedAt: null,
       nextExpectedAt: null,
+      divides: null,
     });
 
     // A change within 15 s of the last push is held back, then sent by the tick.
@@ -564,5 +565,98 @@ describe('regular journeys: morning summary and leave now (dry run)', () => {
     clock = new Date('2026-11-04T16:53:00Z');
     await tick();
     expect(await texts(tomorrow)).toEqual(['disabled leave_now (time-sensitive): Leave now for your 17:15 to York']);
+  });
+});
+
+describe('dividing trains (dry run)', () => {
+  const PORTION = '202611039999999';
+  /** 1S25 divides at Peterborough; the portion leaves at 17:50 for Lincoln (a TIPLOC the mini timetable doesn't know). */
+  async function divideAtPeterborough(cancelled = false) {
+    await db
+      .insertInto('darwin_associations')
+      .values({
+        main_rid: RID,
+        assoc_rid: PORTION,
+        tiploc: 'PBRO',
+        category: 'VV',
+        main_times: JSON.stringify({ wta: '17:45', wtd: '17:47', pta: '17:45', ptd: '17:47' }),
+        assoc_times: JSON.stringify({ wtd: '17:50', ptd: '17:50' }),
+        cancelled,
+      })
+      .execute();
+    for (const loc of [
+      { tpl: 'PBRO', ptd: '17:50', wtd: '17:50' },
+      { tpl: 'LINCLNC', pta: '18:30', wta: '18:30' },
+    ]) {
+      await db.insertInto('darwin_locations').values({ rid: PORTION, key: `${loc.tpl}|`, tpl: loc.tpl, crs: null, loc: JSON.stringify(loc) }).execute();
+    }
+  }
+  const dividesLog = (journeyId: string) =>
+    db.selectFrom('push_log').select(['kind', 'outcome', 'dedupe_key', 'payload']).where('journey_id', '=', journeyId).where('kind', '=', 'divides').execute();
+
+  beforeEach(() => {
+    clock = new Date('2026-11-03T16:00:00Z');
+    notifier = createNotifier({ db, log, sender: null, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
+  });
+
+  it('sends the divides alert once from 30 min before departure, and shows the division in the status and the Live Activity content', async () => {
+    const journey = await save();
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' } })]));
+    await divideAtPeterborough();
+    clock = new Date('2026-11-03T16:29:00Z');
+    await tick();
+    const status = (await api().get(`/v1/journeys/${journey.id}/live`).set(auth).expect(200)).body;
+    expect(status.divides).toEqual({
+      atCrs: 'PBO',
+      atName: 'Peterborough',
+      at: '2026-11-03T17:45:00+00:00',
+      portions: [
+        { destCrs: 'EDB', destName: 'Edinburgh', yours: true, note: null },
+        { destCrs: null, destName: 'LINCLNC', yours: false, note: null },
+      ],
+      message: 'This train divides at Peterborough; only some coaches go to York.',
+    });
+    const row = await db.selectFrom('journeys').selectAll().where('id', '=', journey.id).executeTakeFirstOrThrow();
+    expect(contentOf(row).divides).toBe('Divides at Peterborough');
+    expect(await dividesLog(journey.id)).toEqual([]);
+
+    clock = new Date('2026-11-03T16:30:00Z');
+    await tick();
+    const sent = await dividesLog(journey.id);
+    expect(sent).toMatchObject([{ kind: 'divides', outcome: 'disabled', dedupe_key: 'divides' }]);
+    expect(sent[0]!.payload).toMatchObject({
+      aps: { alert: { title: "17:00 London Kings Cross to York", body: 'This train divides at Peterborough; only some coaches go to York.' }, 'interruption-level': 'active' },
+      journeyId: journey.id,
+      kind: 'divides',
+    });
+
+    // A restarted worker doesn't repeat it.
+    notifier = createNotifier({ db, log, sender: null, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
+    clock = new Date('2026-11-03T16:35:00Z');
+    await tick();
+    expect(await dividesLog(journey.id)).toHaveLength(1);
+    expect((await db.selectFrom('journeys').select('alert_state').where('id', '=', journey.id).executeTakeFirstOrThrow()).alert_state).toMatchObject({ divides: true });
+  });
+
+  it('follows the journey override and the device preference, and ignores a cancelled association', async () => {
+    const off = await save();
+    await api().patch(`/v1/journeys/${off.id}`).set(auth).send({ prefs: { divides: false } }).expect(200);
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' } })]));
+    await divideAtPeterborough();
+    clock = new Date('2026-11-03T16:40:00Z');
+    await tick();
+    expect(await dividesLog(off.id)).toEqual([]);
+
+    await api().patch(`/v1/journeys/${off.id}`).set(auth).send({ prefs: { divides: null } }).expect(200);
+    await api().patch('/v1/devices/me').set(auth).send({ prefs: { divides: false } }).expect(200);
+    await tick();
+    expect(await dividesLog(off.id)).toEqual([]);
+    await api().patch('/v1/devices/me').set(auth).send({ prefs: { divides: true } }).expect(200);
+    await tick();
+    expect(await dividesLog(off.id)).toHaveLength(1);
+
+    await db.updateTable('darwin_associations').set({ cancelled: true }).execute();
+    await tick();
+    expect((await api().get(`/v1/journeys/${off.id}/live`).set(auth).expect(200)).body.divides).toBeNull();
   });
 });

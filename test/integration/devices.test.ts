@@ -40,13 +40,13 @@ describe('devices and auth', () => {
     expect(res.body).not.toHaveProperty('token_hash');
   });
 
-  it('reads preferences stored before morningSummary, leaveNow and connections existed with those defaults, and keeps them on update', async () => {
+  it('reads preferences stored before morningSummary, leaveNow, connections and divides existed with those defaults, and keeps them on update', async () => {
     const { deviceId, auth } = await registerDevice(api);
     const old = { delays: false, platforms: true, cancellations: true, departure: true, arrival: true, delayThresholdMinutes: 5, liveActivity: true };
     await db.updateTable('devices').set({ prefs: JSON.stringify(old) }).where('id', '=', deviceId).execute();
-    expect((await api().get('/v1/devices/me').set(auth).expect(200)).body.prefs).toEqual({ ...old, morningSummary: true, leaveNow: true, connections: true });
+    expect((await api().get('/v1/devices/me').set(auth).expect(200)).body.prefs).toEqual({ ...old, morningSummary: true, leaveNow: true, connections: true, divides: true });
     const res = await api().patch('/v1/devices/me').set(auth).send({ prefs: { leaveNow: false } }).expect(200);
-    expect(res.body.prefs).toEqual({ ...old, morningSummary: true, leaveNow: false, connections: true });
+    expect(res.body.prefs).toEqual({ ...old, morningSummary: true, leaveNow: false, connections: true, divides: true });
   });
 
   it('PATCH /v1/devices/me updates tokens and merges preferences', async () => {

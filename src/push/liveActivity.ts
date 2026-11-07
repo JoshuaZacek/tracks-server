@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type { JourneyState } from '../db/types.ts';
 import type { LiveStatus } from '../modules/journeys/schemas.ts';
+import { divisionShortText } from '../live/division.ts';
 import { canonicalJson } from '../live/updater.ts';
 
 /**
@@ -47,6 +48,11 @@ export interface LiveActivityContent {
   legDepartedAt: string | null;
   /** When it's expected at `nextStopName`. */
   nextExpectedAt: string | null;
+  /**
+   * "Divides at Horsham", or "Divides at Horsham · front 4 coaches" when Darwin says which coaches go to my
+   * destination; null when the train doesn't divide before my destination, or has left the division station.
+   */
+  divides: string | null;
 }
 
 export interface JourneyForActivity {
@@ -113,10 +119,15 @@ export function liveActivityContent(j: JourneyForActivity, s: LiveStatusOut | nu
     nextStopName,
     legDepartedAt,
     nextExpectedAt,
+    divides: s?.divides ? divisionShortText(s.divides) : null,
   };
 }
 
-export const sameContent = (a: LiveActivityContent | null, b: LiveActivityContent | null) => canonicalJson(a) === canonicalJson(b);
+/** Content sent before `divides` existed counts as having none, so adding the field pushes nothing by itself. */
+const normalised = (c: LiveActivityContent | null) => (c ? { ...c, divides: c.divides ?? null } : null);
+
+export const sameContent = (a: LiveActivityContent | null, b: LiveActivityContent | null) =>
+  canonicalJson(normalised(a)) === canonicalJson(normalised(b));
 
 /**
  * Priority 10 (shown straight away, counts against Apple's budget for the
@@ -130,6 +141,7 @@ export function isMaterialChange(before: LiveActivityContent | null, after: Live
     before.isCancelled !== after.isCancelled ||
     before.nextStopName !== after.nextStopName ||
     before.message !== after.message ||
+    (before.divides ?? null) !== after.divides ||
     before.platform?.number !== after.platform?.number ||
     before.platform?.confirmed !== after.platform?.confirmed ||
     Math.abs((after.delayMinutes ?? 0) - (before.delayMinutes ?? 0)) >= 3

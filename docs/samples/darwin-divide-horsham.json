@@ -1,0 +1,436 @@
+{
+  "association": {
+    "tiploc": "HORSHAM",
+    "category": "VV",
+    "main": {
+      "rid": "202611077126226",
+      "wta": "17:27",
+      "wtd": "17:31",
+      "pta": "17:27",
+      "ptd": "17:31"
+    },
+    "assoc": {
+      "rid": "202611076782431",
+      "wtd": "17:35",
+      "ptd": "17:35"
+    }
+  },
+  "main": {
+    "rid": "202611077126226",
+    "uid": "G26226",
+    "trainId": "1C46",
+    "ssd": "2026-11-07",
+    "toc": "SN",
+    "trainCat": "XX",
+    "OR": {
+      "tpl": "VICTRIC",
+      "act": "TB",
+      "ptd": "16:35",
+      "avgLoading": "56",
+      "wtd": "16:35"
+    },
+    "PP": [
+      {
+        "tpl": "BATRSPJ",
+        "wtp": "16:37:30"
+      },
+      {
+        "tpl": "POUPRTJ",
+        "wtp": "16:39"
+      },
+      {
+        "tpl": "WANDCMN",
+        "wtp": "16:43"
+      },
+      {
+        "tpl": "BALHAM",
+        "wtp": "16:44:30"
+      },
+      {
+        "tpl": "STRENJN",
+        "wtp": "16:46"
+      },
+      {
+        "tpl": "STRHCOM",
+        "wtp": "16:46:30"
+      },
+      {
+        "tpl": "NORBURY",
+        "wtp": "16:47"
+      },
+      {
+        "tpl": "THTH",
+        "wtp": "16:49"
+      },
+      {
+        "tpl": "SELHRST",
+        "wtp": "16:50"
+      },
+      {
+        "tpl": "WNDMLBJ",
+        "wtp": "16:50:30"
+      },
+      {
+        "tpl": "SCROYDN",
+        "wtp": "16:54"
+      },
+      {
+        "tpl": "PURLEYO",
+        "wtp": "16:55"
+      },
+      {
+        "tpl": "PURLEY",
+        "wtp": "16:57"
+      },
+      {
+        "tpl": "SNSTJN",
+        "wtp": "16:58"
+      },
+      {
+        "tpl": "EARLSWD",
+        "wtp": "17:03:30"
+      },
+      {
+        "tpl": "SALFDS",
+        "wtp": "17:04"
+      },
+      {
+        "tpl": "HORLEY",
+        "wtp": "17:06"
+      },
+      {
+        "tpl": "IFIELD",
+        "wtp": "17:19"
+      },
+      {
+        "tpl": "FAYGATE",
+        "wtp": "17:21"
+      },
+      {
+        "tpl": "LHVN",
+        "wtp": "17:24"
+      },
+      {
+        "tpl": "CHRSTSH",
+        "can": "true",
+        "wtp": "17:33"
+      },
+      {
+        "tpl": "BILSHST",
+        "can": "true",
+        "wtp": "17:38:30"
+      },
+      {
+        "tpl": "PULBRO",
+        "can": "true",
+        "wtp": "17:43"
+      },
+      {
+        "tpl": "AMLY",
+        "can": "true",
+        "wtp": "17:47"
+      },
+      {
+        "tpl": "ARUNDEL",
+        "can": "true",
+        "wtp": "17:51"
+      },
+      {
+        "tpl": "ARUNDLJ",
+        "can": "true",
+        "wtp": "17:53"
+      },
+      {
+        "tpl": "FORD",
+        "can": "true",
+        "wtp": "17:54:30"
+      },
+      {
+        "tpl": "FSHBORN",
+        "can": "true",
+        "wtp": "18:10"
+      },
+      {
+        "tpl": "BOSHAM",
+        "can": "true",
+        "wtp": "18:11"
+      },
+      {
+        "tpl": "NUTBORN",
+        "can": "true",
+        "wtp": "18:13"
+      },
+      {
+        "tpl": "WRBLNGT",
+        "can": "true",
+        "wtp": "18:22"
+      },
+      {
+        "tpl": "BDHMPTN",
+        "can": "true",
+        "wtp": "18:25"
+      },
+      {
+        "tpl": "FRLNGTJ",
+        "can": "true",
+        "wtp": "18:29"
+      },
+      {
+        "tpl": "PCRKJN",
+        "can": "true",
+        "wtp": "18:29:30"
+      },
+      {
+        "tpl": "FRATTNE",
+        "can": "true",
+        "wtp": "18:33:30"
+      }
+    ],
+    "IP": [
+      {
+        "tpl": "CLPHMJC",
+        "act": "T ",
+        "pta": "16:41",
+        "ptd": "16:42",
+        "avgLoading": "87",
+        "wta": "16:41",
+        "wtd": "16:42"
+      },
+      {
+        "tpl": "ECROYDN",
+        "act": "T ",
+        "pta": "16:52",
+        "ptd": "16:53",
+        "avgLoading": "57",
+        "wta": "16:51:30",
+        "wtd": "16:53:30"
+      },
+      {
+        "tpl": "GTWK",
+        "act": "T ",
+        "pta": "17:08",
+        "ptd": "17:09",
+        "avgLoading": "49",
+        "wta": "17:07:30",
+        "wtd": "17:09"
+      },
+      {
+        "tpl": "THBDGS",
+        "act": "T ",
+        "pta": "17:14",
+        "ptd": "17:14",
+        "avgLoading": "40",
+        "wta": "17:13:30",
+        "wtd": "17:14:30"
+      },
+      {
+        "tpl": "CRAWLEY",
+        "act": "T ",
+        "pta": "17:18",
+        "ptd": "17:18",
+        "avgLoading": "38",
+        "wta": "17:17:30",
+        "wtd": "17:18:30"
+      },
+      {
+        "tpl": "BRHM",
+        "act": "T ",
+        "can": "true",
+        "pta": "17:59",
+        "ptd": "18:00",
+        "avgLoading": "56",
+        "wta": "17:58:30",
+        "wtd": "18:00"
+      },
+      {
+        "tpl": "CHCHSTR",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:07",
+        "ptd": "18:08",
+        "avgLoading": "56",
+        "wta": "18:07",
+        "wtd": "18:08:30"
+      },
+      {
+        "tpl": "SBOURNE",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:15",
+        "ptd": "18:16",
+        "avgLoading": "56",
+        "wta": "18:15",
+        "wtd": "18:16"
+      },
+      {
+        "tpl": "EMSWTH",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:19",
+        "ptd": "18:19",
+        "avgLoading": "57",
+        "wta": "18:18:30",
+        "wtd": "18:19:30"
+      },
+      {
+        "tpl": "HAVANT",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:24",
+        "ptd": "18:24",
+        "avgLoading": "60",
+        "wta": "18:23:30",
+        "wtd": "18:24:30"
+      },
+      {
+        "tpl": "HILSEA",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:31",
+        "ptd": "18:31",
+        "avgLoading": "60",
+        "wta": "18:30:30",
+        "wtd": "18:31"
+      },
+      {
+        "tpl": "FRATTON",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:35",
+        "ptd": "18:35",
+        "avgLoading": "40",
+        "wta": "18:34:30",
+        "wtd": "18:35:30"
+      },
+      {
+        "tpl": "PSEA",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:38",
+        "ptd": "18:44",
+        "avgLoading": "19",
+        "wta": "18:38",
+        "wtd": "18:44"
+      }
+    ],
+    "DT": [
+      {
+        "tpl": "HORSHAM",
+        "act": "TF",
+        "planAct": "T -D",
+        "pta": "17:27",
+        "ptd": "17:31",
+        "avgLoading": "37",
+        "wta": "17:27",
+        "wtd": "17:31"
+      },
+      {
+        "tpl": "PHBR",
+        "act": "TF",
+        "can": "true",
+        "pta": "18:48",
+        "avgLoading": "19",
+        "wta": "18:48"
+      }
+    ],
+    "cancelReason": "704"
+  },
+  "assoc": {
+    "rid": "202611076782431",
+    "uid": "C82431",
+    "trainId": "1B46",
+    "ssd": "2026-11-07",
+    "toc": "SN",
+    "trainCat": "XX",
+    "OR": {
+      "tpl": "HORSHAM",
+      "act": "TB",
+      "ptd": "17:35",
+      "avgLoading": "23",
+      "wtd": "17:35"
+    },
+    "IP": [
+      {
+        "tpl": "CHRSTSH",
+        "act": "T ",
+        "can": "true",
+        "pta": "17:39",
+        "ptd": "17:39",
+        "avgLoading": "22",
+        "wta": "17:38:30",
+        "wtd": "17:39"
+      },
+      {
+        "tpl": "BILSHST",
+        "act": "T ",
+        "can": "true",
+        "pta": "17:45",
+        "ptd": "17:45",
+        "avgLoading": "21",
+        "wta": "17:44:30",
+        "wtd": "17:45:30"
+      },
+      {
+        "tpl": "PULBRO",
+        "act": "T ",
+        "can": "true",
+        "pta": "17:52",
+        "ptd": "17:52",
+        "avgLoading": "18",
+        "wta": "17:51:30",
+        "wtd": "17:52"
+      },
+      {
+        "tpl": "AMLY",
+        "act": "T ",
+        "can": "true",
+        "pta": "17:58",
+        "ptd": "17:58",
+        "avgLoading": "17",
+        "wta": "17:57:30",
+        "wtd": "17:58"
+      },
+      {
+        "tpl": "ARUNDEL",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:02",
+        "ptd": "18:02",
+        "avgLoading": "15",
+        "wta": "18:02",
+        "wtd": "18:02:30"
+      },
+      {
+        "tpl": "FORD",
+        "act": "T ",
+        "can": "true",
+        "pta": "18:08",
+        "ptd": "18:08",
+        "avgLoading": "13",
+        "wta": "18:08",
+        "wtd": "18:08:30"
+      },
+      {
+        "tpl": "BRHM",
+        "act": "T ",
+        "pta": "18:13",
+        "ptd": "18:14",
+        "avgLoading": "11",
+        "wta": "18:13",
+        "wtd": "18:14:30"
+      }
+    ],
+    "PP": {
+      "tpl": "ARUNDLJ",
+      "wtp": "18:06:30"
+    },
+    "DT": {
+      "tpl": "BOGNORR",
+      "act": "TF",
+      "pta": "18:21",
+      "avgLoading": "11",
+      "wta": "18:21"
+    },
+    "cancelReason": "704"
+  }
+}

@@ -205,6 +205,59 @@ describe('live status from Darwin', () => {
     expect(await live(journey.id)).toMatchObject({ state: 'cancelled', message: 'Cancelled', service: { isCancelled: true } });
     expect((await api().get('/v1/journeys').set(auth).expect(200)).body.journeys[0].live).toMatchObject({ state: 'cancelled', isCancelled: true });
   });
+
+  it('gives how busy the train is at my boarding station, with coaches from the formation, on the status and the card', async () => {
+    const journey = await save();
+    await deliver(ts([{ tpl: 'KNGX', ptd: '17:00', wtd: '17:00', dep: { et: '17:00' } }]));
+    await db.insertInto('darwin_formations').values({ fid: `${RID}-001`, rid: RID, coaches: JSON.stringify([{ number: 'A', class: 'First' }, { number: 'B', class: 'Standard' }, { number: 'C', class: 'Standard' }]) }).execute();
+    const coachLoading = { fid: `${RID}-001`, coaches: [{ number: 'A', percentage: 40 }, { number: 'B', percentage: 75 }, { number: 'C', percentage: 22 }] };
+    await sql`UPDATE darwin_locations SET loc = loc || ${JSON.stringify({ loading: 64, coachLoading })}::jsonb WHERE rid = ${RID} AND tpl = 'KNGX'`.execute(db);
+    await deliver(ts([{ tpl: 'KNGX', ptd: '17:00', wtd: '17:00', dep: { et: '17:01' } }]));
+    const loading = {
+      percentage: 64,
+      level: 'busy',
+      coaches: [
+        { number: 'A', percentage: 40, class: 'First' },
+        { number: 'B', percentage: 75, class: 'Standard' },
+        { number: 'C', percentage: 22, class: 'Standard' },
+      ],
+      quietestCoaches: ['C', 'A'],
+    };
+    expect((await live(journey.id)).loading).toEqual(loading);
+    expect((await api().get('/v1/journeys').set(auth).expect(200)).body.journeys[0].live.loading).toEqual(loading);
+  });
+
+  it('shows station messages at my boarding station and destination on the journey, most severe first, then newest', async () => {
+    const journey = await save();
+    const msg = (id: string, severity: number, crs: string[], at: string, extra: object = {}) =>
+      db
+        .insertInto('darwin_station_messages')
+        .values({ id, category: 'Station', severity, message: `Message ${id}`, url: null, crs, updated_at: new Date(at), ...extra })
+        .execute();
+    await msg('1', 1, ['KGX', 'FPK'], '2026-11-03T15:00:00Z', { url: 'https://www.nationalrail.co.uk/x' });
+    await msg('2', 3, ['YRK'], '2026-11-03T14:00:00Z', { category: 'Train' });
+    await msg('3', 1, ['KGX', 'YRK'], '2026-11-03T16:00:00Z');
+    await msg('4', 2, ['KGX'], '2026-11-03T16:00:00Z', { suppress: true });
+    await msg('5', 3, ['EDB'], '2026-11-03T16:00:00Z');
+    const body = (await api().get(`/v1/journeys/${journey.id}`).set(auth).expect(200)).body;
+    expect(body.stationMessages).toEqual([
+      { id: '2', stations: ['YRK'], category: 'Train', severity: 'severe', text: 'Message 2', url: null, updatedAt: '2026-11-03T14:00:00+00:00' },
+      { id: '3', stations: ['KGX', 'YRK'], category: 'Station', severity: 'minor', text: 'Message 3', url: null, updatedAt: '2026-11-03T16:00:00+00:00' },
+      { id: '1', stations: ['KGX'], category: 'Station', severity: 'minor', text: 'Message 1', url: 'https://www.nationalrail.co.uk/x', updatedAt: '2026-11-03T15:00:00+00:00' },
+    ]);
+    // Not part of the live status: a new message is no status change.
+    expect(await live(journey.id)).not.toHaveProperty('stationMessages');
+  });
+
+  it('does not rewrite statuses stored before divides and loading existed', async () => {
+    const journey = await save();
+    await deliver(ts([{ tpl: 'KNGX', ptd: '17:00', wtd: '17:00', dep: { et: '17:05' } }]));
+    await sql`UPDATE journeys SET status = status - 'divides' - 'loading' WHERE id = ${journey.id}`.execute(db);
+    const deps = { db, lookups, now: () => clock, darwinEnabled: true, feedHealthy: () => true };
+    clock = new Date(clock.getTime() + 60_000);
+    expect(await updateJourneys(deps, await journeysDueForTick(db, clock))).toEqual([]);
+    expect((await live(journey.id)).divides).toBeNull();
+  });
 });
 
 describe('live overlays on reference data', () => {

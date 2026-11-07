@@ -43,6 +43,18 @@ describe('OpenAPI document', () => {
     }
   });
 
+  it('has the Sprint 3 schemas: divides and loading on the live status, loading on the summary, station messages on the journey', () => {
+    for (const id of ['TrainDivision', 'DivisionPortion', 'TrainLoading', 'CoachLoad', 'LoadingLevel', 'StationMessage']) expect(components).toHaveProperty(id);
+    const ref = (s: JsonSchema | undefined): string[] => [s?.$ref ?? '', ...(s?.anyOf ?? []).flatMap(ref)].filter(Boolean);
+    expect(ref(components.LiveStatus!.properties!.divides)).toContain('#/components/schemas/TrainDivision');
+    expect(ref(components.LiveStatus!.properties!.loading)).toContain('#/components/schemas/TrainLoading');
+    expect(ref(components.LiveSummary!.properties!.loading)).toContain('#/components/schemas/TrainLoading');
+    expect(components.Journey!.required).toContain('stationMessages');
+    expect(components.JourneyPrefs!.properties).toHaveProperty('divides');
+    expect(components.JourneyPrefsUpdate!.properties).toHaveProperty('divides');
+    expect(components.NotificationPrefs!.properties).toHaveProperty('divides');
+  });
+
   it('has an operationId on every operation, and they are unique', () => {
     const ids = Object.values(doc.paths!).flatMap((p) => Object.values(p as Record<string, { operationId?: string }>).map((op) => op.operationId));
     expect(ids.every(Boolean)).toBe(true);

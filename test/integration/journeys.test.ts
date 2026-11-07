@@ -152,6 +152,8 @@ describe('one journey', () => {
       service: null,
       progress: null,
       position: null,
+      divides: null,
+      loading: null,
     });
   });
 

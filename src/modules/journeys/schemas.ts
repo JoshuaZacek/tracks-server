@@ -85,6 +85,68 @@ export const TrainPosition = z
   })
   .meta({ id: 'TrainPosition' });
 
+// ---- more from Darwin (Sprint 3) ---------------------------------------------------
+
+/** One part of a dividing train after the division. */
+export const DivisionPortion = z
+  .object({
+    destCrs: Crs.nullable(),
+    destName: z.string(),
+    yours: z.boolean().meta({ description: 'This part calls at my destination' }),
+    note: z.string().nullable().meta({ description: 'Which coaches, when Darwin\'s formation data says, e.g. "Front 4 coaches"', example: 'Front 4 coaches' }),
+  })
+  .meta({ id: 'DivisionPortion' });
+
+/**
+ * My train divides at a station between my boarding station and my destination.
+ * Null when it doesn't, and once it has left the division station.
+ */
+export const TrainDivision = z
+  .object({
+    atCrs: Crs,
+    atName: z.string(),
+    at: DateTime.meta({ description: 'Scheduled arrival at the division station' }),
+    portions: z.array(DivisionPortion).meta({ description: 'Mine first' }),
+    message: z.string().meta({ example: 'This train divides at Horsham; only some coaches go to Barnham.' }),
+  })
+  .meta({ id: 'TrainDivision' });
+
+export const LoadingLevel = z.enum(['quiet', 'moderate', 'busy', 'very_busy']).meta({ id: 'LoadingLevel' });
+
+export const CoachLoad = z
+  .object({
+    number: z.string().meta({ example: 'A1' }),
+    percentage: z.number().int().min(0).max(100),
+    class: z.string().nullable().meta({ description: 'First, Standard…; null when unknown' }),
+  })
+  .meta({ id: 'CoachLoad' });
+
+/**
+ * How busy the train is expected to be leaving my boarding station (Darwin's
+ * loading data). quiet < 30 %, moderate < 60 %, busy < 85 %, very_busy from 85 %.
+ */
+export const TrainLoading = z
+  .object({
+    percentage: z.number().int().min(0).max(100),
+    level: LoadingLevel,
+    coaches: z.array(CoachLoad).nullable().meta({ description: 'Front to rear, when Darwin has coach-level loading' }),
+    quietestCoaches: z.array(z.string()).meta({ description: 'Up to two coach numbers, quietest first; empty without coach data' }),
+  })
+  .meta({ id: 'TrainLoading' });
+
+/** A message National Rail shows at my boarding station or destination (Darwin OW). */
+export const StationMessage = z
+  .object({
+    id: z.string(),
+    stations: z.array(Crs).meta({ description: 'Which of my boarding station and destination it is shown at' }),
+    category: z.string().meta({ example: 'Train' }),
+    severity: z.enum(['normal', 'minor', 'major', 'severe']),
+    text: z.string(),
+    url: z.string().nullable(),
+    updatedAt: DateTime,
+  })
+  .meta({ id: 'StationMessage' });
+
 export const LiveStatus = z
   .object({
     state: LiveState,
@@ -95,6 +157,8 @@ export const LiveStatus = z
     service: orNull(LiveService),
     progress: orNull(JourneyProgress),
     position: orNull(TrainPosition),
+    divides: orNull(TrainDivision).default(null),
+    loading: orNull(TrainLoading).default(null),
   })
   .meta({ id: 'LiveStatus' });
 
@@ -111,6 +175,7 @@ export const LiveSummary = z
     isCancelled: z.boolean(),
     stale: z.boolean(),
     checkedAt: DateTime.nullable(),
+    loading: orNull(TrainLoading).default(null),
   })
   .meta({ id: 'LiveSummary' });
 
@@ -180,6 +245,7 @@ export const JourneyPrefs = z
     morningSummary: z.boolean().optional(),
     leaveNow: z.boolean().optional(),
     connections: z.boolean().optional().meta({ description: 'Connection alerts for the change after this leg' }),
+    divides: z.boolean().optional(),
   })
   .meta({ id: 'JourneyPrefs' });
 
@@ -212,6 +278,7 @@ export const Journey = JourneyBase.extend({
   toIndex: z.number().int().nonnegative().meta({ description: 'Index where I get off' }),
   route: z.array(RoutePoint),
   live: LiveStatus,
+  stationMessages: z.array(StationMessage).meta({ description: 'Messages at my boarding station and destination, most severe first' }),
 }).meta({ id: 'Journey' });
 
 export const JourneyList = z
@@ -249,6 +316,7 @@ export const JourneyPrefsUpdate = z
     morningSummary: z.boolean().nullable().optional(),
     leaveNow: z.boolean().nullable().optional(),
     connections: z.boolean().nullable().optional(),
+    divides: z.boolean().nullable().optional(),
   })
   .meta({ id: 'JourneyPrefsUpdate' });
 

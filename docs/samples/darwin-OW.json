@@ -1,0 +1,468 @@
+[
+  {
+    "id": "145744",
+    "cat": "Station",
+    "sev": "0",
+    "Station": [
+      {
+        "crs": "ACG"
+      },
+      {
+        "crs": "ACT"
+      },
+      {
+        "crs": "BDH"
+      },
+      {
+        "crs": "BKJ"
+      },
+      {
+        "crs": "BSD"
+      },
+      {
+        "crs": "BUL"
+      },
+      {
+        "crs": "CFR"
+      },
+      {
+        "crs": "CHD"
+      },
+      {
+        "crs": "CHY"
+      },
+      {
+        "crs": "DAT"
+      },
+      {
+        "crs": "DTW"
+      },
+      {
+        "crs": "ERD"
+      },
+      {
+        "crs": "FKC"
+      },
+      {
+        "crs": "FML"
+      },
+      {
+        "crs": "FRM"
+      },
+      {
+        "crs": "GDP"
+      },
+      {
+        "crs": "GSY"
+      },
+      {
+        "crs": "HAM"
+      },
+      {
+        "crs": "HCN"
+      },
+      {
+        "crs": "HLB"
+      },
+      {
+        "crs": "HNB"
+      },
+      {
+        "crs": "JEQ"
+      },
+      {
+        "crs": "LIS"
+      },
+      {
+        "crs": "LOB"
+      },
+      {
+        "crs": "LOT"
+      },
+      {
+        "crs": "MDW"
+      },
+      {
+        "crs": "MIA"
+      },
+      {
+        "crs": "MLT"
+      },
+      {
+        "crs": "MRN"
+      },
+      {
+        "crs": "NFD"
+      },
+      {
+        "crs": "PDW"
+      },
+      {
+        "crs": "RDC"
+      },
+      {
+        "crs": "SAY"
+      },
+      {
+        "crs": "SCA"
+      },
+      {
+        "crs": "SEN"
+      },
+      {
+        "crs": "SLY"
+      },
+      {
+        "crs": "SRI"
+      },
+      {
+        "crs": "SUT"
+      },
+      {
+        "crs": "THI"
+      },
+      {
+        "crs": "WEL"
+      },
+      {
+        "crs": "WOF"
+      },
+      {
+        "crs": "WYL"
+      }
+    ],
+    "Msg": "The ticket office is currently closed at this station."
+  },
+  {
+    "id": "190195",
+    "cat": "Train",
+    "sev": "1",
+    "Station": [
+      {
+        "crs": "AUR"
+      },
+      {
+        "crs": "BTS"
+      },
+      {
+        "crs": "CBX"
+      },
+      {
+        "crs": "CDD"
+      },
+      {
+        "crs": "COW"
+      },
+      {
+        "crs": "CUB"
+      },
+      {
+        "crs": "CUP"
+      },
+      {
+        "crs": "DAG"
+      },
+      {
+        "crs": "DAM"
+      },
+      {
+        "crs": "DEE"
+      },
+      {
+        "crs": "DFE"
+      },
+      {
+        "crs": "DFL"
+      },
+      {
+        "crs": "EDB"
+      },
+      {
+        "crs": "EGY"
+      },
+      {
+        "crs": "GLT"
+      },
+      {
+        "crs": "HYM"
+      },
+      {
+        "crs": "INK"
+      },
+      {
+        "crs": "KDY"
+      },
+      {
+        "crs": "KGH"
+      },
+      {
+        "crs": "LCG"
+      },
+      {
+        "crs": "LDY"
+      },
+      {
+        "crs": "LEU"
+      },
+      {
+        "crs": "LEV"
+      },
+      {
+        "crs": "MNC"
+      },
+      {
+        "crs": "NQU"
+      },
+      {
+        "crs": "PTH"
+      },
+      {
+        "crs": "ROS"
+      },
+      {
+        "crs": "SGL"
+      },
+      {
+        "crs": "SPR"
+      }
+    ],
+    "Msg": {
+      "": "Trains running between Edinburgh and Leven / Ladybank may be cancelled, delayed or revised. Latest information can be found in the Disruptions area of the ",
+      "a": {
+        "href": "https://www.nationalrail.co.uk/service-disruptions/aberdour-20261107/",
+        "": "National Rail website."
+      }
+    }
+  },
+  {
+    "id": "190196",
+    "cat": "Train",
+    "sev": "1",
+    "Station": [
+      {
+        "crs": "BLW"
+      },
+      {
+        "crs": "CWD"
+      },
+      {
+        "crs": "HKN"
+      },
+      {
+        "crs": "KKB"
+      },
+      {
+        "crs": "LAG"
+      },
+      {
+        "crs": "MFT"
+      },
+      {
+        "crs": "MSW"
+      },
+      {
+        "crs": "NOT"
+      },
+      {
+        "crs": "NSD"
+      },
+      {
+        "crs": "SHB"
+      },
+      {
+        "crs": "SPK"
+      },
+      {
+        "crs": "WRK"
+      },
+      {
+        "crs": "WWL"
+      }
+    ],
+    "Msg": {
+      "p": {
+        "": [
+          "Trains running between Nottingham and Mansfield may be delayed by up to 30 minutes. Latest information can be found in the Disruptions area of the ",
+          "."
+        ],
+        "a": {
+          "href": "https://www.nationalrail.co.uk/service-disruptions/newstead-20261107/",
+          "": "National Rail website"
+        }
+      }
+    }
+  },
+  {
+    "id": "190185",
+    "cat": "Train",
+    "sev": "1",
+    "Station": {
+      "crs": "CWX"
+    },
+    "Msg": {
+      "p": [
+        "Canary Wharf will not be served as there is a problem with the platform equipment at the station.",
+        "You can use your ticket, at no extra cost, on Jubilee line or Docklands Light Railway services to help you to complete your journey.",
+        ""
+      ]
+    }
+  },
+  {
+    "id": "190197",
+    "cat": "Station",
+    "sev": "0",
+    "Station": {
+      "crs": "TAP"
+    },
+    "Msg": "The lifts are out of order between platform 3 and the concourse at Taplow station."
+  },
+  {
+    "id": "145744",
+    "cat": "Station",
+    "sev": "0",
+    "Station": [
+      {
+        "crs": "ACG"
+      },
+      {
+        "crs": "ACT"
+      },
+      {
+        "crs": "BDH"
+      },
+      {
+        "crs": "BKJ"
+      },
+      {
+        "crs": "BSD"
+      },
+      {
+        "crs": "BUL"
+      },
+      {
+        "crs": "CFR"
+      },
+      {
+        "crs": "CHD"
+      },
+      {
+        "crs": "CHY"
+      },
+      {
+        "crs": "DAT"
+      },
+      {
+        "crs": "DTW"
+      },
+      {
+        "crs": "ERD"
+      },
+      {
+        "crs": "EXD"
+      },
+      {
+        "crs": "FKC"
+      },
+      {
+        "crs": "FML"
+      },
+      {
+        "crs": "FRM"
+      },
+      {
+        "crs": "GDP"
+      },
+      {
+        "crs": "GLC"
+      },
+      {
+        "crs": "GNH"
+      },
+      {
+        "crs": "GSY"
+      },
+      {
+        "crs": "HAM"
+      },
+      {
+        "crs": "HCN"
+      },
+      {
+        "crs": "HLB"
+      },
+      {
+        "crs": "HNB"
+      },
+      {
+        "crs": "JEQ"
+      },
+      {
+        "crs": "KNN"
+      },
+      {
+        "crs": "LIS"
+      },
+      {
+        "crs": "LOB"
+      },
+      {
+        "crs": "LOT"
+      },
+      {
+        "crs": "MDW"
+      },
+      {
+        "crs": "MIA"
+      },
+      {
+        "crs": "MLT"
+      },
+      {
+        "crs": "MRN"
+      },
+      {
+        "crs": "NFD"
+      },
+      {
+        "crs": "PDW"
+      },
+      {
+        "crs": "PUT"
+      },
+      {
+        "crs": "RDC"
+      },
+      {
+        "crs": "SAY"
+      },
+      {
+        "crs": "SCA"
+      },
+      {
+        "crs": "SEN"
+      },
+      {
+        "crs": "SLY"
+      },
+      {
+        "crs": "SRI"
+      },
+      {
+        "crs": "SUT"
+      },
+      {
+        "crs": "THI"
+      },
+      {
+        "crs": "WEL"
+      },
+      {
+        "crs": "WOF"
+      },
+      {
+        "crs": "WYL"
+      }
+    ],
+    "Msg": "The ticket office is currently closed at this station."
+  }
+]

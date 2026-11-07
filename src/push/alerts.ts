@@ -2,6 +2,7 @@ import type { z } from 'zod';
 import type { NotificationPrefs } from '../db/types.ts';
 import type { LiveStatus } from '../modules/journeys/schemas.ts';
 import type { ConnectionOut, ConnectionStatusValue } from '../live/connection.ts';
+import { bothMine } from '../live/division.ts';
 import { dayIndex, hhmmToMinutes, ukWallClock } from '../time.ts';
 
 /**
@@ -36,6 +37,8 @@ export interface AlertState {
   morningSummary?: boolean;
   /** Leave-now alert sent, or no longer due. Absent = not yet. */
   leaveNow?: boolean;
+  /** Divides alert sent. Absent = not yet. */
+  divides?: boolean;
 }
 
 export type AlertKind =
@@ -48,7 +51,8 @@ export type AlertKind =
   | 'morning_summary'
   | 'leave_now'
   | 'template_unmatched'
-  | 'connection';
+  | 'connection'
+  | 'divides';
 
 export interface Alert {
   kind: AlertKind;
@@ -377,6 +381,28 @@ export function planLeaveNow(
     ? `Your ${hhmm(j.scheduledDeparture)} is cancelled. No need to leave yet.`
     : `Leave now for your ${hhmm(j.scheduledDeparture)} to ${j.toName}${s?.service ? `, ${runningText(s)}` : ''}${platformText(s)}`;
   return { alert: timedAlert('leave_now', j, body, true), next: done };
+}
+
+/** The divides alert is sent from this long before departure. */
+export const DIVIDES_BEFORE_MIN = 30;
+
+/**
+ * Dividing train: once, from DIVIDES_BEFORE_MIN before the departure (expected,
+ * else scheduled) until the train leaves, when my train divides before my
+ * destination and only one part (or no part Darwin can say) goes there. When
+ * both parts call there it isn't news, so nothing is sent (and it stays due in
+ * case that changes). Nothing is sent once the train has left. A time rule:
+ * the tick checks it.
+ */
+export function planDivides(told: AlertState, s: LiveStatusOut | null, j: JourneyFacts, enabled: boolean, now: Date): TimedPlan {
+  const d = s?.divides;
+  if (told.divides || !s || !d) return { alert: null, next: told };
+  // Once the train has left, it's too late to choose a coach: no longer due (so the tick stops bringing it round).
+  if (isDeparted(s)) return { alert: null, next: { ...told, divides: true } };
+  if (!enabled || isCancelled(s) || bothMine(d)) return { alert: null, next: told };
+  const departs = s.service?.expectedDeparture ?? j.scheduledDeparture;
+  if (now.getTime() < Date.parse(departs) - DIVIDES_BEFORE_MIN * 60_000) return { alert: null, next: told };
+  return { alert: timedAlert('divides', j, d.message, false), next: { ...told, divides: true } };
 }
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

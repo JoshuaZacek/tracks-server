@@ -500,6 +500,10 @@
           "connections": {
             "type": "boolean",
             "description": "Trips: an alert when a change becomes at risk or missed (with the next train), and when it is back on (kind connection)"
+          },
+          "divides": {
+            "type": "boolean",
+            "description": "Trains that divide on my route: an alert 30 min before departure saying which part to be in (kind divides)"
           }
         },
         "required": [
@@ -512,7 +516,8 @@
           "liveActivity",
           "morningSummary",
           "leaveNow",
-          "connections"
+          "connections",
+          "divides"
         ]
       },
       "UpdateDeviceRequest": {
@@ -601,6 +606,10 @@
           "connections": {
             "type": "boolean",
             "description": "Trips: an alert when a change becomes at risk or missed (with the next train), and when it is back on (kind connection)"
+          },
+          "divides": {
+            "type": "boolean",
+            "description": "Trains that divide on my route: an alert 30 min before departure saying which part to be in (kind divides)"
           }
         }
       },
@@ -1336,6 +1345,9 @@
           "connections": {
             "type": "boolean",
             "description": "Connection alerts for the change after this leg"
+          },
+          "divides": {
+            "type": "boolean"
           }
         }
       },
@@ -1563,6 +1575,17 @@
             "format": "date-time",
             "description": "ISO 8601 date-time with UK offset, no fractional seconds",
             "example": "2026-11-03T17:30:00+00:00"
+          },
+          "loading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainLoading"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -1587,6 +1610,77 @@
           "arrived",
           "cancelled",
           "not_found"
+        ]
+      },
+      "TrainLoading": {
+        "type": "object",
+        "properties": {
+          "percentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "level": {
+            "$ref": "#/components/schemas/LoadingLevel"
+          },
+          "coaches": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CoachLoad"
+            },
+            "description": "Front to rear, when Darwin has coach-level loading"
+          },
+          "quietestCoaches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Up to two coach numbers, quietest first; empty without coach data"
+          }
+        },
+        "required": [
+          "percentage",
+          "level",
+          "coaches",
+          "quietestCoaches"
+        ]
+      },
+      "LoadingLevel": {
+        "type": "string",
+        "enum": [
+          "quiet",
+          "moderate",
+          "busy",
+          "very_busy"
+        ]
+      },
+      "CoachLoad": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string",
+            "example": "A1"
+          },
+          "percentage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "class": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "First, Standard…; null when unknown"
+          }
+        },
+        "required": [
+          "number",
+          "percentage",
+          "class"
         ]
       },
       "Journey": {
@@ -1727,6 +1821,13 @@
           },
           "live": {
             "$ref": "#/components/schemas/LiveStatus"
+          },
+          "stationMessages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StationMessage"
+            },
+            "description": "Messages at my boarding station and destination, most severe first"
           }
         },
         "required": [
@@ -1752,7 +1853,8 @@
           "fromIndex",
           "toIndex",
           "route",
-          "live"
+          "live",
+          "stationMessages"
         ]
       },
       "LiveStatus": {
@@ -1814,6 +1916,28 @@
                 "type": "null"
               }
             ]
+          },
+          "divides": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainDivision"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "loading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainLoading"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -2154,6 +2278,134 @@
           "expectedTime"
         ]
       },
+      "TrainDivision": {
+        "type": "object",
+        "properties": {
+          "atCrs": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "atName": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Scheduled arrival at the division station",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "portions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DivisionPortion"
+            },
+            "description": "Mine first"
+          },
+          "message": {
+            "type": "string",
+            "example": "This train divides at Horsham; only some coaches go to Barnham."
+          }
+        },
+        "required": [
+          "atCrs",
+          "atName",
+          "at",
+          "portions",
+          "message"
+        ]
+      },
+      "DivisionPortion": {
+        "type": "object",
+        "properties": {
+          "destCrs": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z]{3}$",
+            "description": "Three-letter station (CRS) code",
+            "example": "KGX"
+          },
+          "destName": {
+            "type": "string"
+          },
+          "yours": {
+            "type": "boolean",
+            "description": "This part calls at my destination"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Which coaches, when Darwin's formation data says, e.g. \"Front 4 coaches\"",
+            "example": "Front 4 coaches"
+          }
+        },
+        "required": [
+          "destCrs",
+          "destName",
+          "yours",
+          "note"
+        ]
+      },
+      "StationMessage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "stations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{3}$",
+              "description": "Three-letter station (CRS) code",
+              "example": "KGX"
+            },
+            "description": "Which of my boarding station and destination it is shown at"
+          },
+          "category": {
+            "type": "string",
+            "example": "Train"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "minor",
+              "major",
+              "severe"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "id",
+          "stations",
+          "category",
+          "severity",
+          "text",
+          "url",
+          "updatedAt"
+        ]
+      },
       "CreateJourneyRequest": {
         "type": "object",
         "properties": {
@@ -2275,6 +2527,12 @@
             ]
           },
           "connections": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "divides": {
             "type": [
               "boolean",
               "null"

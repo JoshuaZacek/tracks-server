@@ -1,0 +1,276 @@
+[
+  {
+    "fid": "202611076736997-001",
+    "rid": "202611076736997",
+    "tpl": "ABWDXR",
+    "wta": "00:00",
+    "wtd": "17:36",
+    "pta": "00:00",
+    "ptd": "17:36",
+    "loading": [
+      {
+        "coachNumber": "1",
+        "": "1"
+      },
+      {
+        "coachNumber": "2",
+        "": "5"
+      },
+      {
+        "coachNumber": "3",
+        "": "5"
+      },
+      {
+        "coachNumber": "4",
+        "": "2"
+      },
+      {
+        "coachNumber": "5",
+        "": "4"
+      },
+      {
+        "coachNumber": "6",
+        "": "10"
+      },
+      {
+        "coachNumber": "7",
+        "": "20"
+      },
+      {
+        "coachNumber": "8",
+        "": "17"
+      },
+      {
+        "coachNumber": "9",
+        "": "11"
+      }
+    ]
+  },
+  {
+    "fid": "202611076736997-001",
+    "rid": "202611076736997",
+    "tpl": "LIVSTLL",
+    "wta": "17:53:30",
+    "wtd": "17:54:30",
+    "pta": "17:54",
+    "ptd": "17:54",
+    "loading": [
+      {
+        "coachNumber": "1",
+        "": "29"
+      },
+      {
+        "coachNumber": "2",
+        "": "32"
+      },
+      {
+        "coachNumber": "3",
+        "": "36"
+      },
+      {
+        "coachNumber": "4",
+        "": "23"
+      },
+      {
+        "coachNumber": "5",
+        "": "21"
+      },
+      {
+        "coachNumber": "6",
+        "": "14"
+      },
+      {
+        "coachNumber": "7",
+        "": "17"
+      },
+      {
+        "coachNumber": "8",
+        "": "29"
+      },
+      {
+        "coachNumber": "9",
+        "": "16"
+      }
+    ]
+  },
+  {
+    "fid": "202611076736997-001",
+    "rid": "202611076736997",
+    "tpl": "HTRWAPT",
+    "wta": "18:35:30",
+    "wtd": "18:37",
+    "pta": "18:37",
+    "ptd": "18:37",
+    "loading": [
+      {
+        "coachNumber": "1",
+        "": "10"
+      },
+      {
+        "coachNumber": "2",
+        "": "21"
+      },
+      {
+        "coachNumber": "3",
+        "": "11"
+      },
+      {
+        "coachNumber": "4",
+        "": "8"
+      },
+      {
+        "coachNumber": "5",
+        "": "12"
+      },
+      {
+        "coachNumber": "6",
+        "": "4"
+      },
+      {
+        "coachNumber": "7",
+        "": "11"
+      },
+      {
+        "coachNumber": "8",
+        "": "10"
+      },
+      {
+        "coachNumber": "9",
+        "": "2"
+      }
+    ]
+  },
+  {
+    "fid": "202611078089053-001",
+    "rid": "202611078089053",
+    "tpl": "WENHNGR",
+    "wta": "17:32:30",
+    "wtd": "17:33",
+    "pta": "17:33",
+    "ptd": "17:33",
+    "loading": [
+      {
+        "coachNumber": "A1",
+        "": "32"
+      },
+      {
+        "coachNumber": "A2",
+        "": "42"
+      },
+      {
+        "coachNumber": "A3",
+        "": "43"
+      },
+      {
+        "coachNumber": "A4",
+        "": "23"
+      },
+      {
+        "coachNumber": "B1",
+        "": "13"
+      },
+      {
+        "coachNumber": "B2",
+        "": "16"
+      },
+      {
+        "coachNumber": "B3",
+        "": "52"
+      }
+    ]
+  },
+  {
+    "fid": "202611076737118-001",
+    "rid": "202611076737118",
+    "tpl": "WOLWXR",
+    "wta": "17:33",
+    "wtd": "17:33:30",
+    "pta": "17:33",
+    "ptd": "17:33",
+    "loading": [
+      {
+        "coachNumber": "1",
+        "": "26"
+      },
+      {
+        "coachNumber": "2",
+        "": "29"
+      },
+      {
+        "coachNumber": "3",
+        "": "22"
+      },
+      {
+        "coachNumber": "4",
+        "": "26"
+      },
+      {
+        "coachNumber": "5",
+        "": "14"
+      },
+      {
+        "coachNumber": "6",
+        "": "17"
+      },
+      {
+        "coachNumber": "7",
+        "": "19"
+      },
+      {
+        "coachNumber": "8",
+        "": "19"
+      },
+      {
+        "coachNumber": "9",
+        "": "16"
+      }
+    ]
+  },
+  {
+    "fid": "202611076738457-001",
+    "rid": "202611076738457",
+    "tpl": "ROMFORD",
+    "wta": "17:33",
+    "wtd": "17:34",
+    "pta": "17:34",
+    "ptd": "17:34",
+    "loading": [
+      {
+        "coachNumber": "1",
+        "": "10"
+      },
+      {
+        "coachNumber": "2",
+        "": "14"
+      },
+      {
+        "coachNumber": "3",
+        "": "11"
+      },
+      {
+        "coachNumber": "4",
+        "": "13"
+      },
+      {
+        "coachNumber": "5",
+        "": "5"
+      },
+      {
+        "coachNumber": "6",
+        "": "10"
+      },
+      {
+        "coachNumber": "7",
+        "": "10"
+      },
+      {
+        "coachNumber": "8",
+        "": "14"
+      },
+      {
+        "coachNumber": "9",
+        "": "3"
+      }
+    ]
+  }
+]

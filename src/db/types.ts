@@ -12,6 +12,9 @@ export interface Database {
   trips: TripsTable;
   darwin_services: DarwinServicesTable;
   darwin_locations: DarwinLocationsTable;
+  darwin_associations: DarwinAssociationsTable;
+  darwin_formations: DarwinFormationsTable;
+  darwin_station_messages: DarwinStationMessagesTable;
   live_activities: LiveActivitiesTable;
   push_log: PushLogTable;
   'schedule.tiplocs': TiplocsTable;
@@ -41,6 +44,7 @@ export interface NotificationPrefs {
   morningSummary: boolean;
   leaveNow: boolean;
   connections: boolean;
+  divides: boolean;
 }
 
 export interface DevicesTable {
@@ -206,6 +210,59 @@ export interface DarwinLocationsTable {
   crs: string | null;
   /** DarwinLocation (src/darwin/types.ts). */
   loc: ColumnType<unknown, string, string>;
+  updated_at: Timestamp;
+}
+
+/** Planned times at an association's location, as Darwin gives them. */
+export interface AssociationTimes {
+  wta?: string;
+  wtd?: string;
+  wtp?: string;
+  pta?: string;
+  ptd?: string;
+}
+
+export interface DarwinAssociationsTable {
+  /** The train running through the location. */
+  main_rid: string;
+  /** VV: the portion that starts at the location; JJ: the one that ends there. */
+  assoc_rid: string;
+  tiploc: string;
+  /** VV divides, JJ joins. */
+  category: 'VV' | 'JJ';
+  main_times: ColumnType<AssociationTimes, string, string>;
+  assoc_times: ColumnType<AssociationTimes, string, string>;
+  cancelled: Generated<boolean>;
+  updated_at: Timestamp;
+}
+
+/** One coach of a formation, front to rear. */
+export interface FormationCoach {
+  number: string;
+  /** "First", "Standard", "Mixed"…; null when Darwin doesn't say. */
+  class: string | null;
+}
+
+export interface DarwinFormationsTable {
+  fid: string;
+  rid: string;
+  coaches: ColumnType<FormationCoach[], string, string>;
+  updated_at: Timestamp;
+}
+
+export interface DarwinStationMessagesTable {
+  id: string;
+  /** Darwin's category: Train, Station, Connections, System, Misc, PriorTrains, PriorOther. */
+  category: string;
+  /** 0 normal, 1 minor, 2 major, 3 severe. */
+  severity: number;
+  /** Darwin asks for it not to be shown. */
+  suppress: Generated<boolean>;
+  /** Plain text (Darwin's markup flattened). */
+  message: string;
+  /** The first link in the message, if any. */
+  url: string | null;
+  crs: string[];
   updated_at: Timestamp;
 }
 
