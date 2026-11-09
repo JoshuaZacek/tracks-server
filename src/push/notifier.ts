@@ -14,10 +14,12 @@ import { connectionAfter, legViewOf } from '../modules/journeys/service.ts';
 import { findAlternatives } from '../modules/trips/alternatives.ts';
 import type { CallingPoint } from '../modules/trains/schemas.ts';
 import {
+  DELAY_REPAY_FRESH_MIN,
   DIVIDES_BEFORE_MIN,
   baselineOf,
   planAlerts,
   planConnectionAlert,
+  planDelayRepay,
   planDivides,
   planLeaveNow,
   planMorningSummary,
@@ -256,8 +258,9 @@ export function createNotifier(opts: NotifierOptions) {
       const summary = planMorningSummary(next, status, facts, j.summary_time, prefs.morningSummary, at);
       const leave = planLeaveNow(summary.next, status, facts, j.travel_minutes, prefs.leaveNow, at);
       const divides = planDivides(leave.next, status, facts, prefs.divides, at);
-      next = divides.next;
-      for (const alert of [summary.alert, leave.alert, divides.alert]) if (alert) alerts.push(alert);
+      const repay = planDelayRepay(divides.next, status, facts, j.toc, prefs.delayRepay, at);
+      next = repay.next;
+      for (const alert of [summary.alert, leave.alert, divides.alert, repay.alert]) if (alert) alerts.push(alert);
     }
     if (canonicalJson(next) !== canonicalJson(told)) {
       await db.updateTable('journeys').set({ alert_state: JSON.stringify(next) }).where('id', '=', j.id).execute();
@@ -517,7 +520,7 @@ export function createNotifier(opts: NotifierOptions) {
 
   /**
    * Time-driven work: the "approaching" alert, the morning summary, leave-now and
-   * divides alerts once due, Live Activity updates held back by the rate limit or a
+   * divides alerts once due, Delay Repay for cancelled trains at their scheduled arrival, Live Activity updates held back by the rate limit or a
    * failed push, push-to-start, and regular-journey alerts. The stop alarm needs
    * nothing here: its pushes follow changes in the arrival estimate, which come
    * through journeysChanged (or `held`, picked up once live data is healthy).
@@ -541,7 +544,12 @@ export function createNotifier(opts: NotifierOptions) {
             AND j.scheduled_departure - make_interval(mins => j.travel_minutes + 12) <= ${at})
           OR (jsonb_typeof(j.status->'divides') = 'object' AND coalesce((j.alert_state->>'divides')::boolean, false) = false
             AND j.scheduled_departure - make_interval(mins => ${DIVIDES_BEFORE_MIN}) <= ${at})
-        )`.execute(db);
+        )
+      UNION
+      -- Delay Repay for a cancelled train (or one no longer calling at my destination) is due at its scheduled arrival.
+      SELECT id FROM journeys
+      WHERE archived_at IS NULL AND state IN ('cancelled', 'departed') AND coalesce((alert_state->>'delayRepay')::boolean, false) = false
+        AND scheduled_arrival <= ${at} AND scheduled_arrival > ${new Date(at.getTime() - DELAY_REPAY_FRESH_MIN * 60_000)}`.execute(db);
     await processJourneys(rows.map((r) => r.id));
     if (await liveDataHealthy()) await autoStart();
     await sendTemplateAlerts();

@@ -220,6 +220,59 @@ export const TripLink = z
   })
   .meta({ id: 'TripLink' });
 
+// ---- Delay Repay and sharing (Sprint 4) ------------------------------------------
+
+export const TicketType = z.enum(['single', 'return']).meta({ id: 'TicketType' });
+
+export const DelayRepayBand = z
+  .object({
+    minMinutes: z.number().int(),
+    maxMinutes: z.number().int().nullable().meta({ description: 'Null for the top band' }),
+    singlePercent: z.number().meta({ description: 'Of a single fare' }),
+    returnPercent: z.number().meta({ description: 'Of a return fare, delayed one way' }),
+  })
+  .meta({ id: 'DelayRepayBand' });
+
+/**
+ * What this journey may be able to claim, once it is over: arrived late enough
+ * for the operator's Delay Repay scheme, or cancelled (past its scheduled
+ * arrival). Null otherwise, and for operators without rules.
+ */
+export const DelayRepayClaim = z
+  .object({
+    operator: Operator,
+    scheme: z.enum(['DR15', 'DR30']).meta({ description: 'Delay Repay 15 (from 15 min) or 30 (from 30 min)' }),
+    minimumDelayMinutes: z.number().int(),
+    delayMinutes: z.number().int().nullable().meta({ description: 'Late at my destination; null when cancelled' }),
+    cancelled: z.boolean(),
+    band: orNull(DelayRepayBand).meta({ description: 'Null when cancelled: the claim depends on the train taken instead (or a refund)' }),
+    actualArrival: DateTime.nullable().meta({ description: 'At my destination; null when cancelled' }),
+    claimUrl: z.url().meta({ description: "The operator's claim form or Delay Repay page" }),
+    ticketPricePence: z.number().int().nullable(),
+    ticketType: orNull(TicketType),
+    estimatePence: z.number().int().nullable().meta({ description: 'The band of the ticket price; null without a band, price or ticket type' }),
+    claimed: z.boolean(),
+    claimedAt: DateTime.nullable(),
+  })
+  .meta({ id: 'DelayRepayClaim' });
+
+/** What the user says about a claim: a value sets it, null clears it, omitted leaves it. */
+export const ClaimUpdate = z
+  .object({
+    ticketPricePence: z.number().int().min(0).max(10_000_000).nullable().optional(),
+    ticketType: orNull(TicketType).optional(),
+    claimed: z.boolean().optional().meta({ description: 'true marks it claimed (the app hides the card)' }),
+  })
+  .meta({ id: 'ClaimUpdate' });
+
+/** A public link to this journey's live status, while it is shared. */
+export const JourneyShare = z
+  .object({
+    url: z.url().meta({ example: 'https://tracks-api.joshuazacek.com/s/9vR2o1mNw0bXH6cQe8Jt1A' }),
+    expiresAt: DateTime.meta({ description: '6 h after the scheduled arrival' }),
+  })
+  .meta({ id: 'JourneyShare' });
+
 // ---- journeys -------------------------------------------------------------------
 
 /** Time to get to the boarding station: the leave_now alert fires this long (plus 2 min) before departure. */
@@ -246,6 +299,7 @@ export const JourneyPrefs = z
     leaveNow: z.boolean().optional(),
     connections: z.boolean().optional().meta({ description: 'Connection alerts for the change after this leg' }),
     divides: z.boolean().optional(),
+    delayRepay: z.boolean().optional(),
   })
   .meta({ id: 'JourneyPrefs' });
 
@@ -266,6 +320,8 @@ const JourneyBase = z.object({
   travelMinutes: TravelMinutes.nullable(),
   trip: orNull(TripLink).meta({ description: 'The trip (a journey with changes) this is a leg of; null when on its own' }),
   connection: orNull(Connection).meta({ description: 'The change from this leg to the next one of its trip; null for the last leg or no trip' }),
+  claim: orNull(DelayRepayClaim).meta({ description: 'Delay Repay this journey may be able to claim; null until it is over, or when nothing can be' }),
+  share: orNull(JourneyShare).meta({ description: 'The public link while the journey is shared' }),
   createdAt: DateTime,
   archivedAt: DateTime.nullable(),
 });
@@ -317,6 +373,7 @@ export const JourneyPrefsUpdate = z
     leaveNow: z.boolean().nullable().optional(),
     connections: z.boolean().nullable().optional(),
     divides: z.boolean().nullable().optional(),
+    delayRepay: z.boolean().nullable().optional(),
   })
   .meta({ id: 'JourneyPrefsUpdate' });
 
@@ -325,6 +382,7 @@ export const UpdateJourneyRequest = z
     prefs: JourneyPrefsUpdate.optional(),
     archived: z.boolean().optional().meta({ description: 'true moves the journey to past; false brings it back' }),
     travelMinutes: TravelMinutes.nullable().optional().meta({ description: 'Minutes to get to the boarding station; null clears it' }),
+    claim: ClaimUpdate.optional(),
   })
   .meta({ id: 'UpdateJourneyRequest' });
 

@@ -7,7 +7,8 @@ import type { Logger } from './logger.ts';
 import type { Lookups } from './live/lookups.ts';
 import { createAuthenticator } from './http/middleware/auth.ts';
 import { createErrorHandler, notFoundHandler } from './http/middleware/errorHandler.ts';
-import { createGlobalLimiter, createRegistrationLimiter } from './http/middleware/rateLimit.ts';
+import { createGlobalLimiter, createRegistrationLimiter, createSharedLimiter } from './http/middleware/rateLimit.ts';
+import { mountSharePages } from './modules/shares/pages.ts';
 import { buildOpenApiDocument } from './http/openapi.ts';
 import { mountRoutes } from './http/route.ts';
 import { routes } from './routes.ts';
@@ -48,12 +49,15 @@ export function createApp(deps: AppDeps) {
     res.json(openapi);
   });
 
+  // One limiter for the share JSON and page, so a viewer's page and its polling count together.
+  const shared = createSharedLimiter(limits);
   const router = express.Router();
   mountRoutes(router, routes, {
     deps,
     authenticate: createAuthenticator(deps.db),
-    limiters: { registration: createRegistrationLimiter(limits) },
+    limiters: { registration: createRegistrationLimiter(limits), shared },
   });
+  mountSharePages(router, deps, shared);
   app.use(router);
 
   app.use(notFoundHandler);

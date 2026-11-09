@@ -77,6 +77,20 @@ whole stack runs locally too (see the end of `docs/deploy.md`).
 | GET / PATCH / DELETE | `/v1/journeys/{id}` | 3 |
 | GET | `/v1/journeys/{id}/live` | 3 (timetable), 4 (Darwin) |
 | PUT / DELETE | `/v1/journeys/{id}/live-activity` | 5 |
+| POST / DELETE | `/v1/journeys/{id}/share` | Sprint 4 |
+| GET | `/v1/shared/{token}` (public), `/s/{token}` (public HTML page) | Sprint 4 |
+
+### Delay Repay and sharing (Sprint 4)
+
+Journeys carry `claim` once they are over: arrived late enough for the operator's Delay Repay scheme, or cancelled and past
+their scheduled arrival. The rules (Delay Repay 15 or 30, the bands, the claim URL) are data in `src/domain/delayRepay.ts`,
+from gov.uk's compensation page (Feb 2026); rows with `checkedOn: null` still need checking against the operator's own page
+before release. `PATCH /v1/journeys/{id}` takes `claim: { ticketPricePence, ticketType, claimed }` for the estimate and the
+"Claimed" switch. The worker sends one `delay_repay` alert (pref `delayRepay`).
+
+`POST /v1/journeys/{id}/share` returns a link (`/s/<128-bit token>`) that works until 6 h after the scheduled arrival or
+until `DELETE`. The page and `GET /v1/shared/{token}` show only the train and the two stations; both are rate-limited per
+client. Links use `PUBLIC_URL`, else `https://$DOMAIN`.
 
 ## Code layout
 

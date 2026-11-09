@@ -44,9 +44,18 @@ const EnvSchema = z.object({
   APNS_TEAM_ID: z.string().default(''),
   APNS_KEY_PATH: z.string().default(''),
   APNS_BUNDLE_ID: z.string().default(''),
+  /** Where share links point; defaults to https://DOMAIN (deploy sets DOMAIN), else this server on localhost. */
+  PUBLIC_URL: optionalUrl,
+  DOMAIN: z.string().default(''),
 });
 
 export type Config = ReturnType<typeof loadConfig>;
+
+function publicUrlOf(e: { PUBLIC_URL: string; DOMAIN: string; PORT: number }) {
+  if (e.PUBLIC_URL) return e.PUBLIC_URL.replace(/\/+$/, '');
+  if (e.DOMAIN && e.DOMAIN !== 'localhost') return `https://${e.DOMAIN}`;
+  return `http://localhost:${e.PORT}`;
+}
 
 /** Reads and validates the environment once at startup; a bad value stops the process with a clear message. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
@@ -60,6 +69,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     env: e.NODE_ENV,
     isProduction: e.NODE_ENV === 'production',
     port: e.PORT,
+    /** The public origin (no trailing slash) for links the API hands out, e.g. share links. */
+    publicUrl: publicUrlOf(e),
     logLevel: e.LOG_LEVEL,
     trustProxy: e.TRUST_PROXY,
     databaseUrl: e.DATABASE_URL,

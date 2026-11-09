@@ -15,6 +15,7 @@ export interface Database {
   darwin_associations: DarwinAssociationsTable;
   darwin_formations: DarwinFormationsTable;
   darwin_station_messages: DarwinStationMessagesTable;
+  journey_shares: JourneySharesTable;
   live_activities: LiveActivitiesTable;
   push_log: PushLogTable;
   'schedule.tiplocs': TiplocsTable;
@@ -45,6 +46,7 @@ export interface NotificationPrefs {
   leaveNow: boolean;
   connections: boolean;
   divides: boolean;
+  delayRepay: boolean;
 }
 
 export interface DevicesTable {
@@ -153,6 +155,11 @@ export interface JourneysTable {
   trip_id: ColumnType<string | null, string | null | undefined, string | null>;
   /** 1 for the first train of the trip; null without a trip. */
   leg: ColumnType<number | null, number | null | undefined, number | null>;
+  /** Delay Repay: what the ticket cost (pence) and its type, for the estimate; null until the user says. */
+  claim_ticket_pence: ColumnType<number | null, number | null | undefined, number | null>;
+  claim_ticket_type: ColumnType<'single' | 'return' | null, 'single' | 'return' | null | undefined, 'single' | 'return' | null>;
+  /** When the user marked the Delay Repay claim made; null = not claimed. */
+  claimed_at: ColumnType<Date | null, Date | null | undefined, Date | null>;
 }
 
 export type JourneyRow = Selectable<JourneysTable>;
@@ -265,6 +272,19 @@ export interface DarwinStationMessagesTable {
   crs: string[];
   updated_at: Timestamp;
 }
+
+/** A public link to a journey's live status (GET /v1/shared/{token}, /s/{token}). */
+export interface JourneySharesTable {
+  /** Random 128 bits, base64url (22 characters). */
+  token: string;
+  journey_id: string;
+  created_at: Timestamp;
+  /** Scheduled arrival + 6 h. */
+  expires_at: Date;
+  revoked_at: Date | null;
+}
+
+export type JourneyShareRow = Selectable<JourneySharesTable>;
 
 export interface LiveActivitiesTable {
   journey_id: string;

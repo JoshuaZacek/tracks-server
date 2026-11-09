@@ -2,6 +2,8 @@ import type { z } from 'zod';
 import type { NotificationPrefs } from '../db/types.ts';
 import type { LiveStatus } from '../modules/journeys/schemas.ts';
 import type { ConnectionOut, ConnectionStatusValue } from '../live/connection.ts';
+import { claimOf } from '../domain/delayRepay.ts';
+import { operatorName } from '../domain/operators.ts';
 import { bothMine } from '../live/division.ts';
 import { dayIndex, hhmmToMinutes, ukWallClock } from '../time.ts';
 
@@ -39,6 +41,8 @@ export interface AlertState {
   leaveNow?: boolean;
   /** Divides alert sent. Absent = not yet. */
   divides?: boolean;
+  /** Delay Repay looked at once the journey was over: alerted, or nothing to claim. Absent = not yet. */
+  delayRepay?: boolean;
 }
 
 export type AlertKind =
@@ -52,7 +56,8 @@ export type AlertKind =
   | 'leave_now'
   | 'template_unmatched'
   | 'connection'
-  | 'divides';
+  | 'divides'
+  | 'delay_repay';
 
 export interface Alert {
   kind: AlertKind;
@@ -403,6 +408,38 @@ export function planDivides(told: AlertState, s: LiveStatusOut | null, j: Journe
   const departs = s.service?.expectedDeparture ?? j.scheduledDeparture;
   if (now.getTime() < Date.parse(departs) - DIVIDES_BEFORE_MIN * 60_000) return { alert: null, next: told };
   return { alert: timedAlert('divides', j, d.message, false), next: { ...told, divides: true } };
+}
+
+/** A delay_repay alert this long after the journey ended (actual, else scheduled arrival) is no longer news. */
+export const DELAY_REPAY_FRESH_MIN = 6 * 60;
+
+const percentText = (p: number) => `${p}%`;
+
+/**
+ * Delay Repay: once the journey is over (arrived, or cancelled and past its
+ * scheduled arrival), whether it can be claimed for (`claimOf`). If so, one
+ * alert saying how much of the fare, from which operator. Either way it is
+ * then settled, so the tick stops bringing it round. Not sent with the
+ * preference off, or when the journey ended more than DELAY_REPAY_FRESH_MIN
+ * ago (the worker was down): the claim card in the app is still there.
+ */
+export function planDelayRepay(told: AlertState, s: LiveStatusOut | null, j: JourneyFacts, toc: string, enabled: boolean, now: Date): TimedPlan {
+  if (told.delayRepay) return { alert: null, next: told };
+  const claim = claimOf(s, { toc, scheduledArrival: j.scheduledArrival }, now);
+  const done = { ...told, delayRepay: true };
+  if (!claim) return { alert: null, next: s?.state === 'arrived' ? done : told };
+  const ended = Date.parse(claim.actualArrival ?? j.scheduledArrival);
+  if (!enabled || now.getTime() - ended > DELAY_REPAY_FRESH_MIN * 60_000) return { alert: null, next: done };
+
+  const from = `Delay Repay from ${operatorName(toc)}`;
+  let body: string;
+  if (claim.cancelled || !claim.band) {
+    body = `This train was cancelled. You may be able to claim ${from} for how late you got to ${j.toName}, or a refund if you didn't travel.`;
+  } else {
+    const share = claim.band.maxMinutes === null ? `${percentText(claim.band.returnPercent)} of a return fare` : `${percentText(claim.band.singlePercent)} of a single fare`;
+    body = `Arrived at ${j.toName} ${claim.delayMinutes} min late. You may be able to claim ${from}: ${share}.`;
+  }
+  return { alert: timedAlert('delay_repay', j, body, false), next: done };
 }
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

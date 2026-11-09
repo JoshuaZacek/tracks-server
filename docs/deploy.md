@@ -100,6 +100,10 @@ nginx.
      so nobody can reach the API around Cloudflare. This setting covers the whole zone. Your other sites behind
      Cloudflare are unaffected unless their own nginx config asks for the certificate.
 
+**Share links (`/s/*`):** nginx's `location /` passes every path to the API, so the share page needs no extra rule. Cloudflare
+doesn't cache it (no file extension, and the API sends `Cache-Control: no-store`); `/s/share.js` has a `.js` extension, so
+Cloudflare may cache it for its `max-age` (5 minutes). Links are built from `DOMAIN` (or `PUBLIC_URL`, if set).
+
 **Why this matters for rate limits:** only Cloudflare can connect, so its `CF-Connecting-IP` header is the visitor's real
 address. nginx passes it as the only `X-Forwarded-For` entry, and the API's per-visitor rate limits use it. Without the
 client-certificate check, anyone could send a fake `CF-Connecting-IP` straight to the server.

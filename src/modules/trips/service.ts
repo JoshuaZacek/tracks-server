@@ -3,6 +3,7 @@ import { darwinEnabled, type AppDeps } from '../../app.ts';
 import type { Db } from '../../db/client.ts';
 import type { DeviceRow, JourneyRow } from '../../db/types.ts';
 import { needsAlternatives } from '../../live/connection.ts';
+import { loadShares } from '../shares/links.ts';
 import { ApiError } from '../../http/errors.ts';
 import { toUkIso } from '../../time.ts';
 import { connectionAfter, loadStationMessages, readContext, saveDepsOf, saveJourney, toJourney } from '../journeys/service.ts';
@@ -68,8 +69,8 @@ export async function getTrip(deps: AppDeps, device: DeviceRow, id: string): Pro
     const next = legs.find((l) => l.leg === leg.leg! + 1)!;
     connections.push({ ...c, alternatives: needsAlternatives(c) ? await findAlternatives(deps.db, live, c, next) : [] });
   }
-  const messages = await loadStationMessages(deps.db, legs);
-  return { id: trip.id, legs: legs.map((l) => toJourney(l, rc, trips, messages)), connections, createdAt: toUkIso(trip.created_at) };
+  const [messages, shares] = await Promise.all([loadStationMessages(deps.db, legs), loadShares(deps.db, legs, rc.now)]);
+  return { id: trip.id, legs: legs.map((l) => toJourney(l, rc, trips, messages, shares)), connections, createdAt: toUkIso(trip.created_at) };
 }
 
 /**

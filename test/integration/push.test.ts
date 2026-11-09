@@ -660,3 +660,113 @@ describe('dividing trains (dry run)', () => {
     expect((await api().get(`/v1/journeys/${off.id}/live`).set(auth).expect(200)).body.divides).toBeNull();
   });
 });
+
+describe('Delay Repay', () => {
+  const repayLog = async (journeyId: string) =>
+    (await pushLog(journeyId)).filter((r) => r.kind === 'delay_repay').map((r) => `${r.channel}:${r.outcome}`);
+  const get = async (id: string) => (await api().get(`/v1/journeys/${id}`).set(auth).expect(200)).body;
+  const patch = async (id: string, body: object) => (await api().patch(`/v1/journeys/${id}`).set(auth).send(body).expect(200)).body;
+
+  it('puts a claim on a journey that arrives late enough, alerts once, and keeps the ticket and claimed', async () => {
+    const journey = await save();
+    expect(journey.claim).toBeNull();
+    await deliver(SCHEDULE, ts([kgx({ dep: { et: '17:00' } })]));
+    clock = new Date('2026-11-03T17:32:00Z');
+    await deliver(ts([kgx({ dep: { at: '17:31' } }), york({ arr: { et: '19:31' } })]));
+    expect((await get(journey.id)).claim).toBeNull(); // still on its way
+    sender.take();
+
+    clock = new Date('2026-11-03T19:35:00Z');
+    await deliver(ts([york({ arr: { at: '19:34' } })]));
+    const bodies = alertsIn(sender.take());
+    expect(bodies).toContain('Arrived at York 34 min late. You may be able to claim Delay Repay from LNER: 50% of a single fare.');
+    expect(await repayLog(journey.id)).toEqual(['alert:sent']);
+
+    // Nothing repeats after a restart.
+    notifier = createNotifier({ db, log, sender, bundleId: BUNDLE, darwinEnabled: true, now: () => clock });
+    notifier.journeysChanged([journey.id]);
+    await tick();
+    expect(await repayLog(journey.id)).toEqual(['alert:sent']);
+
+    const claim = (await get(journey.id)).claim;
+    expect(claim).toEqual({
+      operator: { code: 'GR', name: 'LNER' },
+      scheme: 'DR30',
+      minimumDelayMinutes: 30,
+      delayMinutes: 34,
+      cancelled: false,
+      band: { minMinutes: 30, maxMinutes: 59, singlePercent: 50, returnPercent: 25 },
+      actualArrival: '2026-11-03T19:34:00+00:00',
+      claimUrl: expect.stringMatching(/^https:\/\//),
+      ticketPricePence: null,
+      ticketType: null,
+      estimatePence: null,
+      claimed: false,
+      claimedAt: null,
+    });
+    const past = (await api().get('/v1/journeys?scope=past').set(auth).expect(200)).body.journeys;
+    expect(past[0].claim).toEqual(claim);
+
+    await api().patch(`/v1/journeys/${journey.id}`).set(auth).send({ claim: { ticketPricePence: -1 } }).expect(400);
+    await api().patch(`/v1/journeys/${journey.id}`).set(auth).send({ claim: { ticketType: 'season' } }).expect(400);
+    expect((await patch(journey.id, { claim: { ticketPricePence: 4520, ticketType: 'single' } })).claim).toMatchObject({
+      ticketPricePence: 4520,
+      ticketType: 'single',
+      estimatePence: 2260,
+      claimed: false,
+    });
+    expect((await patch(journey.id, { claim: { ticketType: 'return' } })).claim).toMatchObject({ ticketPricePence: 4520, estimatePence: 1130 });
+    expect((await patch(journey.id, { claim: { claimed: true } })).claim).toMatchObject({ claimed: true, claimedAt: '2026-11-03T19:35:00+00:00', ticketPricePence: 4520 });
+    expect((await patch(journey.id, { claim: { claimed: false, ticketPricePence: null } })).claim).toMatchObject({
+      claimed: false,
+      claimedAt: null,
+      ticketPricePence: null,
+      estimatePence: null,
+    });
+  });
+
+  it('has no claim (and sends nothing) for a train under the threshold', async () => {
+    const journey = await save();
+    await deliver(SCHEDULE, ts([kgx({ dep: { at: '17:10' } })]));
+    clock = new Date('2026-11-03T19:21:00Z');
+    await deliver(ts([york({ arr: { at: '19:20' } })]));
+    expect((await get(journey.id)).claim).toBeNull();
+    expect(await repayLog(journey.id)).toEqual([]);
+    const state = (await db.selectFrom('journeys').select('alert_state').where('id', '=', journey.id).executeTakeFirstOrThrow()).alert_state;
+    expect(state).toMatchObject({ delayRepay: true });
+  });
+
+  it('gives a cancelled train its claim and alert from the tick after its scheduled arrival', async () => {
+    const journey = await save();
+    await deliver({
+      schedule: {
+        ...SCHEDULE.schedule,
+        OR: { ...SCHEDULE.schedule.OR, can: 'true' },
+        IP: SCHEDULE.schedule.IP.map((l) => ({ ...l, can: 'true' })),
+        DT: { ...SCHEDULE.schedule.DT, can: 'true' },
+      },
+    });
+    expect(alertsIn(sender.take())).toEqual(['This train has been cancelled.']);
+    clock = new Date('2026-11-03T18:59:00Z');
+    await tick();
+    expect(await repayLog(journey.id)).toEqual([]);
+    expect((await get(journey.id)).claim).toBeNull();
+
+    clock = new Date('2026-11-03T19:01:00Z');
+    await tick();
+    expect(alertsIn(sender.take())).toEqual([
+      "This train was cancelled. You may be able to claim Delay Repay from LNER for how late you got to York, or a refund if you didn't travel.",
+    ]);
+    expect((await get(journey.id)).claim).toMatchObject({ cancelled: true, band: null, delayMinutes: null });
+  });
+
+  it('follows the delayRepay preference: the claim card stays, the alert does not come', async () => {
+    const journey = await save();
+    await api().patch(`/v1/journeys/${journey.id}`).set(auth).send({ prefs: { delayRepay: false } }).expect(200);
+    await deliver(SCHEDULE, ts([kgx({ dep: { at: '17:40' } })]));
+    clock = new Date('2026-11-03T19:45:00Z');
+    await deliver(ts([york({ arr: { at: '19:44' } })]));
+    expect(await repayLog(journey.id)).toEqual([]);
+    expect((await get(journey.id)).claim).toMatchObject({ delayMinutes: 44 });
+  });
+});

@@ -8,8 +8,10 @@ import { Lookups } from '../src/live/lookups.ts';
 import { resetFeedCache } from '../src/live/feed.ts';
 import { resetScheduleCache } from '../src/modules/reference.ts';
 
-export function createTestContext(opts: { now?: () => Date; darwin?: boolean } = {}) {
+export function createTestContext(opts: { now?: () => Date; darwin?: boolean; production?: boolean } = {}) {
   const config = loadConfig();
+  // Production applies rate limits to loopback clients too (tests are on 127.0.0.1).
+  if (opts.production) config.isProduction = true;
   // Darwin "configured" without real credentials: the API only reads what tests write.
   if (opts.darwin) config.rdm.darwin.bootstrap = 'test.invalid:9092';
   const db = createDb(config.databaseUrl, { max: 2 });

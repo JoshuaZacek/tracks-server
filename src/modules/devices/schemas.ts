@@ -18,6 +18,9 @@ export const NotificationPrefs = z
       .boolean()
       .meta({ description: 'Trips: an alert when a change becomes at risk or missed (with the next train), and when it is back on (kind connection)' }),
     divides: z.boolean().meta({ description: 'Trains that divide on my route: an alert 30 min before departure saying which part to be in (kind divides)' }),
+    delayRepay: z
+      .boolean()
+      .meta({ description: 'An alert when a journey ends late enough (or cancelled) to claim Delay Repay (kind delay_repay). The claim card shows either way' }),
   })
   .meta({ id: 'NotificationPrefs' });
 
@@ -33,6 +36,7 @@ export const DEFAULT_PREFS: z.output<typeof NotificationPrefs> = {
   leaveNow: true,
   connections: true,
   divides: true,
+  delayRepay: true,
 };
 
 const ApnsEnvironment = z.enum(['sandbox', 'production']).meta({ id: 'ApnsEnvironment' });

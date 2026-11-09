@@ -54,6 +54,8 @@
                   "station_not_on_route",
                   "trip_not_found",
                   "not_connected",
+                  "share_not_found",
+                  "journey_over",
                   "schedule_not_loaded",
                   "rate_limited",
                   "not_implemented",
@@ -504,6 +506,10 @@
           "divides": {
             "type": "boolean",
             "description": "Trains that divide on my route: an alert 30 min before departure saying which part to be in (kind divides)"
+          },
+          "delayRepay": {
+            "type": "boolean",
+            "description": "An alert when a journey ends late enough (or cancelled) to claim Delay Repay (kind delay_repay). The claim card shows either way"
           }
         },
         "required": [
@@ -517,7 +523,8 @@
           "morningSummary",
           "leaveNow",
           "connections",
-          "divides"
+          "divides",
+          "delayRepay"
         ]
       },
       "UpdateDeviceRequest": {
@@ -610,6 +617,10 @@
           "divides": {
             "type": "boolean",
             "description": "Trains that divide on my route: an alert 30 min before departure saying which part to be in (kind divides)"
+          },
+          "delayRepay": {
+            "type": "boolean",
+            "description": "An alert when a journey ends late enough (or cancelled) to claim Delay Repay (kind delay_repay). The claim card shows either way"
           }
         }
       },
@@ -1265,6 +1276,28 @@
             ],
             "description": "The change from this leg to the next one of its trip; null for the last leg or no trip"
           },
+          "claim": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DelayRepayClaim"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Delay Repay this journey may be able to claim; null until it is over, or when nothing can be"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JourneyShare"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The public link while the journey is shared"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1301,6 +1334,8 @@
           "travelMinutes",
           "trip",
           "connection",
+          "claim",
+          "share",
           "createdAt",
           "archivedAt",
           "live"
@@ -1347,6 +1382,9 @@
             "description": "Connection alerts for the change after this leg"
           },
           "divides": {
+            "type": "boolean"
+          },
+          "delayRepay": {
             "type": "boolean"
           }
         }
@@ -1500,6 +1538,166 @@
           "tight",
           "at_risk",
           "missed"
+        ]
+      },
+      "DelayRepayClaim": {
+        "type": "object",
+        "properties": {
+          "operator": {
+            "$ref": "#/components/schemas/Operator"
+          },
+          "scheme": {
+            "type": "string",
+            "enum": [
+              "DR15",
+              "DR30"
+            ],
+            "description": "Delay Repay 15 (from 15 min) or 30 (from 30 min)"
+          },
+          "minimumDelayMinutes": {
+            "type": "integer"
+          },
+          "delayMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Late at my destination; null when cancelled"
+          },
+          "cancelled": {
+            "type": "boolean"
+          },
+          "band": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DelayRepayBand"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when cancelled: the claim depends on the train taken instead (or a refund)"
+          },
+          "actualArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "At my destination; null when cancelled",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "claimUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "The operator's claim form or Delay Repay page"
+          },
+          "ticketPricePence": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "ticketType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estimatePence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The band of the ticket price; null without a band, price or ticket type"
+          },
+          "claimed": {
+            "type": "boolean"
+          },
+          "claimedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "operator",
+          "scheme",
+          "minimumDelayMinutes",
+          "delayMinutes",
+          "cancelled",
+          "band",
+          "actualArrival",
+          "claimUrl",
+          "ticketPricePence",
+          "ticketType",
+          "estimatePence",
+          "claimed",
+          "claimedAt"
+        ]
+      },
+      "DelayRepayBand": {
+        "type": "object",
+        "properties": {
+          "minMinutes": {
+            "type": "integer"
+          },
+          "maxMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Null for the top band"
+          },
+          "singlePercent": {
+            "type": "number",
+            "description": "Of a single fare"
+          },
+          "returnPercent": {
+            "type": "number",
+            "description": "Of a return fare, delayed one way"
+          }
+        },
+        "required": [
+          "minMinutes",
+          "maxMinutes",
+          "singlePercent",
+          "returnPercent"
+        ]
+      },
+      "TicketType": {
+        "type": "string",
+        "enum": [
+          "single",
+          "return"
+        ]
+      },
+      "JourneyShare": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://tracks-api.joshuazacek.com/s/9vR2o1mNw0bXH6cQe8Jt1A"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "6 h after the scheduled arrival",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "url",
+          "expiresAt"
         ]
       },
       "LiveSummary": {
@@ -1781,6 +1979,28 @@
             ],
             "description": "The change from this leg to the next one of its trip; null for the last leg or no trip"
           },
+          "claim": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DelayRepayClaim"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Delay Repay this journey may be able to claim; null until it is over, or when nothing can be"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JourneyShare"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The public link while the journey is shared"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -1847,6 +2067,8 @@
           "travelMinutes",
           "trip",
           "connection",
+          "claim",
+          "share",
           "createdAt",
           "archivedAt",
           "callingPoints",
@@ -2458,6 +2680,9 @@
             "minimum": 0,
             "maximum": 240,
             "description": "Minutes to get to the boarding station; null clears it"
+          },
+          "claim": {
+            "$ref": "#/components/schemas/ClaimUpdate"
           }
         }
       },
@@ -2537,6 +2762,39 @@
               "boolean",
               "null"
             ]
+          },
+          "delayRepay": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "ClaimUpdate": {
+        "type": "object",
+        "properties": {
+          "ticketPricePence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000000
+          },
+          "ticketType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "claimed": {
+            "type": "boolean",
+            "description": "true marks it claimed (the app hides the card)"
           }
         }
       },
@@ -3029,6 +3287,163 @@
         "required": [
           "trainUid",
           "runDate"
+        ]
+      },
+      "SharedJourney": {
+        "type": "object",
+        "properties": {
+          "headcode": {
+            "type": "string"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/Operator"
+          },
+          "from": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "to": {
+            "$ref": "#/components/schemas/Station"
+          },
+          "scheduledDeparture": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "scheduledArrival": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "state": {
+            "$ref": "#/components/schemas/LiveState"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "nextPollSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "description": "When to ask again; null = final"
+          },
+          "expectedDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualDeparture": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "expectedArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "At the destination",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "actualArrival": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO 8601 date-time with UK offset, no fractional seconds",
+            "example": "2026-11-03T17:30:00+00:00"
+          },
+          "delayMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "At the boarding station"
+          },
+          "isCancelled": {
+            "type": "boolean"
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProgressStop"
+            },
+            "description": "Boarding station first, destination last"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainPosition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the link stops working",
+            "example": "2026-11-03T17:30:00+00:00"
+          }
+        },
+        "required": [
+          "headcode",
+          "operator",
+          "from",
+          "to",
+          "scheduledDeparture",
+          "scheduledArrival",
+          "state",
+          "message",
+          "stale",
+          "checkedAt",
+          "nextPollSeconds",
+          "expectedDeparture",
+          "actualDeparture",
+          "expectedArrival",
+          "actualArrival",
+          "delayMinutes",
+          "platform",
+          "isCancelled",
+          "stops",
+          "position",
+          "expiresAt"
         ]
       }
     },
@@ -5499,6 +5914,258 @@
           },
           "422": {
             "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/journeys/{id}/share": {
+      "post": {
+        "operationId": "shareJourney",
+        "summary": "Share a journey: a public link to its live status",
+        "description": "Returns 201 with a new link, or 200 with the one already working. Anyone with the link sees the train, my two stations, times, delay, platform and position (`GET /v1/shared/{token}`, and a page at the link), nothing about the device or its settings. The link works until 6 h after the scheduled arrival, or until `DELETE`. 422 `journey_over` once that time has passed.",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The link (200 if it was already shared)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JourneyShare"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "stopSharingJourney",
+        "summary": "Stop sharing a journey",
+        "description": "Every link to it stops working at once (404). Succeeds when it was not shared.",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Stopped"
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or unknown device token (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (`rate_limited`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error (`internal`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/shared/{token}": {
+      "get": {
+        "operationId": "getSharedJourney",
+        "summary": "A shared journey (public)",
+        "description": "No auth: the token is the permission. 404 `share_not_found` for an unknown, revoked or expired link. Rate-limited per client. Poll at `nextPollSeconds`.",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The train and my two stations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedJourney"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request is not valid (`validation_failed`, `invalid_json`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {

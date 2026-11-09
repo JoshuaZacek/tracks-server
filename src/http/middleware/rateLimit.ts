@@ -30,3 +30,9 @@ export const createGlobalLimiter = (opts: { skipLoopback: boolean }) =>
 /** Device registration, per client IP: real installs register once, but a train full of people may share one IP. */
 export const createRegistrationLimiter = (opts: { skipLoopback: boolean }) =>
   rateLimit({ ...common(opts.skipLoopback), windowMs: 10 * 60_000, limit: 120 });
+
+/** Public share links (JSON and page), per client IP: a page polls every 15–60 s, so this is many viewers' worth. */
+export const SHARED_LIMIT_PER_MINUTE = 60;
+
+export const createSharedLimiter = (opts: { skipLoopback: boolean }) =>
+  rateLimit({ ...common(opts.skipLoopback), windowMs: 60_000, limit: SHARED_LIMIT_PER_MINUTE });

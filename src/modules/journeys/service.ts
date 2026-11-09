@@ -8,16 +8,20 @@ import { feedHealthy, feedState } from '../../live/feed.ts';
 import { updateJourneys } from '../../live/updater.ts';
 import { baselineOf, stopAlarmArrival } from '../../push/alerts.ts';
 import type { Db } from '../../db/client.ts';
-import type { DarwinStationMessagesTable, DeviceRow, JourneyRow } from '../../db/types.ts';
+import type { DarwinStationMessagesTable, DeviceRow, JourneyRow, JourneyShareRow } from '../../db/types.ts';
+import { claimOf, estimatePence } from '../../domain/delayRepay.ts';
 import type { Lookups } from '../../live/lookups.ts';
 import { operatorName } from '../../domain/operators.ts';
 import { ApiError } from '../../http/errors.ts';
 import { toUkIso } from '../../time.ts';
 import type { CallingPoint, RoutePoint } from '../trains/schemas.ts';
 import { getTrain } from '../trains/service.ts';
+import { loadShares, shareOut } from '../shares/links.ts';
 import { tidyTrips } from '../trips/legs.ts';
 import type {
+  ClaimUpdate,
   CreateJourneyRequest,
+  DelayRepayClaim,
   Journey,
   JourneyList,
   JourneyListItem,
@@ -43,6 +47,8 @@ export interface ReadContext {
   now: Date;
   darwinEnabled: boolean;
   feed: FeedState | null;
+  /** The API's public origin, for share links; null outside the API (the worker). */
+  publicUrl: string | null;
 }
 
 /** What saving a journey needs: the API passes its AppDeps, the worker its own (materialising regular journeys). */
@@ -57,7 +63,7 @@ export const saveDepsOf = (deps: AppDeps): SaveDeps => ({ db: deps.db, lookups: 
 
 export async function readContext(deps: AppDeps | SaveDeps): Promise<ReadContext> {
   const enabled = 'config' in deps ? darwinEnabled(deps) : deps.darwinEnabled;
-  return { now: deps.now(), darwinEnabled: enabled, feed: enabled ? await feedState(deps.db) : null };
+  return { now: deps.now(), darwinEnabled: enabled, feed: enabled ? await feedState(deps.db) : null, publicUrl: 'config' in deps ? deps.config.publicUrl : null };
 }
 
 /**
@@ -118,8 +124,37 @@ function liveSummaryOf(row: JourneyRow, rc: ReadContext): z.input<typeof LiveSum
   };
 }
 
-function baseOf(row: JourneyRow) {
+/** Working share links by journey id (loadShares). */
+export type Shares = Map<string, JourneyShareRow>;
+
+/**
+ * The Delay Repay claim a journey supports, worked out from its stored status
+ * when read (so it follows the rules table as it is now), with what the user
+ * said about it: ticket, estimate, claimed.
+ */
+export function claimOutOf(row: JourneyRow, now: Date): z.input<typeof DelayRepayClaim> | null {
+  const claim = claimOf(upgradeStored(row.status as LiveStatusOut | null), { toc: row.toc, scheduledArrival: toUkIso(row.scheduled_arrival) }, now);
+  if (!claim) return null;
+  return {
+    operator: { code: row.toc, name: operatorName(row.toc || null) },
+    scheme: claim.scheme,
+    minimumDelayMinutes: claim.minimumMinutes,
+    delayMinutes: claim.delayMinutes,
+    cancelled: claim.cancelled,
+    band: claim.band,
+    actualArrival: claim.actualArrival,
+    claimUrl: claim.claimUrl,
+    ticketPricePence: row.claim_ticket_pence,
+    ticketType: row.claim_ticket_type,
+    estimatePence: estimatePence(claim.band, row.claim_ticket_pence, row.claim_ticket_type),
+    claimed: row.claimed_at !== null,
+    claimedAt: row.claimed_at ? toUkIso(row.claimed_at) : null,
+  };
+}
+
+function baseOf(row: JourneyRow, rc: ReadContext, shares: Shares) {
   const calls = row.calling_points as CallingPointOut[];
+  const share = shares.get(row.id);
   const station = (c: CallingPointOut) => ({ crs: c.crs, name: c.name, lat: c.lat, lon: c.lon });
   return {
     id: row.id,
@@ -136,6 +171,8 @@ function baseOf(row: JourneyRow) {
     prefs: row.prefs,
     templateId: row.template_id,
     travelMinutes: row.travel_minutes,
+    claim: claimOutOf(row, rc.now),
+    share: share && rc.publicUrl ? shareOut(rc.publicUrl, share) : null,
     createdAt: toUkIso(row.created_at),
     archivedAt: row.archived_at ? toUkIso(row.archived_at) : null,
   };
@@ -224,15 +261,16 @@ export function stationMessagesOf(row: JourneyRow, messages: readonly StationMes
     }));
 }
 
-/** A full journey. `messages`: station messages loaded for it (loadStationMessages). */
+/** A full journey. `messages`: station messages loaded for it (loadStationMessages); `shares`: loadShares. */
 export function toJourney(
   row: JourneyRow,
   rc: ReadContext,
   trips: TripLegs,
   messages: readonly StationMessageRow[],
+  shares: Shares,
 ): z.input<typeof Journey> {
   return {
-    ...baseOf(row),
+    ...baseOf(row, rc, shares),
     ...tripPartsOf(row, trips, rc),
     callingPoints: row.calling_points as CallingPointOut[],
     fromIndex: row.from_index,
@@ -243,16 +281,16 @@ export function toJourney(
   };
 }
 
-const toListItem = (row: JourneyRow, rc: ReadContext, trips: TripLegs): z.input<typeof JourneyListItem> => ({
-  ...baseOf(row),
+const toListItem = (row: JourneyRow, rc: ReadContext, trips: TripLegs, shares: Shares): z.input<typeof JourneyListItem> => ({
+  ...baseOf(row, rc, shares),
   ...tripPartsOf(row, trips, rc),
   live: liveSummaryOf(row, rc),
 });
 
-/** toJourney for one journey, loading its trip and station messages. */
+/** toJourney for one journey, loading its trip, station messages and share. */
 async function journeyOut(db: Db, row: JourneyRow, rc: ReadContext) {
-  const [trips, messages] = await Promise.all([loadTripLegs(db, [row]), loadStationMessages(db, [row])]);
-  return toJourney(row, rc, trips, messages);
+  const [trips, messages, shares] = await Promise.all([loadTripLegs(db, [row]), loadStationMessages(db, [row]), loadShares(db, [row], rc.now)]);
+  return toJourney(row, rc, trips, messages, shares);
 }
 
 /**
@@ -286,8 +324,8 @@ export async function listJourneys(deps: AppDeps, device: DeviceRow, scope: 'upc
       for (const c of candidates) if (c !== null && c > 0) soonest = soonest === null ? c : Math.min(soonest, c);
     }
   }
-  const trips = await loadTripLegs(deps.db, rows);
-  return { journeys: rows.map((r) => toListItem(r, rc, trips)), nextPollSeconds: soonest === null ? null : clampPoll(soonest) };
+  const [trips, shares] = await Promise.all([loadTripLegs(deps.db, rows), loadShares(deps.db, rows, now)]);
+  return { journeys: rows.map((r) => toListItem(r, rc, trips, shares)), nextPollSeconds: soonest === null ? null : clampPoll(soonest) };
 }
 
 export async function findOwned(deps: Pick<AppDeps, 'db'>, device: DeviceRow, id: string): Promise<JourneyRow> {
@@ -405,11 +443,25 @@ export async function updateJourney(
   deps: AppDeps,
   device: DeviceRow,
   id: string,
-  body: { prefs?: z.output<typeof JourneyPrefsUpdate>; archived?: boolean; travelMinutes?: number | null },
+  body: { prefs?: z.output<typeof JourneyPrefsUpdate>; archived?: boolean; travelMinutes?: number | null; claim?: z.output<typeof ClaimUpdate> },
 ) {
   const row = await findOwned(deps, device, id);
-  const changes: { prefs?: string; archived_at?: Date | null; alert_state?: RawBuilder<string>; travel_minutes?: number | null } = {};
+  const changes: {
+    prefs?: string;
+    archived_at?: Date | null;
+    alert_state?: RawBuilder<string>;
+    travel_minutes?: number | null;
+    claim_ticket_pence?: number | null;
+    claim_ticket_type?: 'single' | 'return' | null;
+    claimed_at?: Date | null;
+  } = {};
   if (body.travelMinutes !== undefined) changes.travel_minutes = body.travelMinutes;
+  if (body.claim) {
+    const c = body.claim;
+    if (c.ticketPricePence !== undefined) changes.claim_ticket_pence = c.ticketPricePence;
+    if (c.ticketType !== undefined) changes.claim_ticket_type = c.ticketType;
+    if (c.claimed !== undefined) changes.claimed_at = c.claimed ? (row.claimed_at ?? deps.now()) : null;
+  }
   if (body.prefs) {
     const prefs = applyPrefsUpdate(row.prefs, body.prefs);
     changes.prefs = JSON.stringify(prefs);

@@ -5,6 +5,7 @@ import { DEFAULT_PREFS } from '../modules/devices/schemas.ts';
 import {
   baselineOf,
   planAlerts,
+  planDelayRepay,
   planDivides,
   planLeaveNow,
   planMorningSummary,
@@ -415,6 +416,58 @@ describe('planDivides', () => {
     };
     expect(plan(told, loaded)).toEqual({ alerts: [], next: told });
     expect(plan({ ...told, divides: true }, loaded).next).toMatchObject({ divides: true });
+  });
+});
+
+describe('planDelayRepay', () => {
+  const arrived = (arrDelay: number) =>
+    status({ state: 'arrived', actualDeparture: t('17:30'), arrDelay, actualArrival: t(`19:${String(arrDelay).padStart(2, '0')}`) });
+  const repay = (told: AlertState, s: LiveStatusOut | null, now: Date, toc = 'GR', enabled = true) => planDelayRepay(told, s, J, toc, enabled, now);
+
+  it('is sent once when the train arrives late enough to claim, with the band and the operator', () => {
+    const r = repay(quiet, arrived(34), at('19:35'));
+    expect(r.alert).toEqual({
+      kind: 'delay_repay',
+      dedupeKey: 'delay_repay',
+      title: "17:00 King's Cross to York",
+      body: 'Arrived at York 34 min late. You may be able to claim Delay Repay from LNER: 50% of a single fare.',
+      collapseId: null,
+      timeSensitive: false,
+    });
+    expect(r.next).toEqual({ ...quiet, delayRepay: true });
+    expect(repay(r.next, arrived(34), at('19:40'))).toEqual({ alert: null, next: r.next });
+  });
+
+  it('says a full return fare from two hours late', () => {
+    const s = status({ state: 'arrived', arrDelay: 125, actualArrival: '2026-11-03T21:05:00+00:00' });
+    expect(repay(quiet, s, at('21:10')).alert?.body).toBe('Arrived at York 125 min late. You may be able to claim Delay Repay from LNER: 100% of a return fare.');
+  });
+
+  it("is settled without an alert when the train arrived too early to claim, or the operator has no rules", () => {
+    expect(repay(quiet, arrived(20), at('19:21'))).toEqual({ alert: null, next: { ...quiet, delayRepay: true } });
+    expect(repay(quiet, arrived(20), at('19:21'), 'SW').alert?.body).toBe(
+      'Arrived at York 20 min late. You may be able to claim Delay Repay from South Western Railway: 25% of a single fare.',
+    );
+    expect(repay(quiet, arrived(45), at('19:46'), 'HX')).toEqual({ alert: null, next: { ...quiet, delayRepay: true } });
+  });
+
+  it('waits while the train is on its way', () => {
+    const onTheWay = status({ state: 'departed', actualDeparture: t('17:30'), arrDelay: 34, expectedArrival: t('19:34') });
+    expect(repay(quiet, onTheWay, at('19:10'))).toEqual({ alert: null, next: quiet });
+    expect(repay(quiet, null, at('19:10'))).toEqual({ alert: null, next: quiet });
+  });
+
+  it('tells about a cancelled train once its scheduled arrival has gone by', () => {
+    const cancelled = status({ state: 'cancelled', cancelled: true });
+    expect(repay(quiet, cancelled, at('18:59'))).toEqual({ alert: null, next: quiet });
+    const r = repay(quiet, cancelled, at('19:00'));
+    expect(r.alert?.body).toBe("This train was cancelled. You may be able to claim Delay Repay from LNER for how late you got to York, or a refund if you didn't travel.");
+    expect(r.next.delayRepay).toBe(true);
+  });
+
+  it('is settled quietly with the preference off, or when it is no longer news (6 hours on)', () => {
+    expect(repay(quiet, arrived(34), at('19:35'), 'GR', false)).toEqual({ alert: null, next: { ...quiet, delayRepay: true } });
+    expect(repay(quiet, arrived(34), new Date('2026-11-04T01:35:00Z'))).toEqual({ alert: null, next: { ...quiet, delayRepay: true } });
   });
 });
 

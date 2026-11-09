@@ -43,7 +43,7 @@ export interface RouteSpec<
   tags: string[];
   auth: A;
   /** Named rate limiter to apply in addition to the global one. */
-  rateLimit?: 'registration';
+  rateLimit?: 'registration' | 'shared';
   request?: { params?: P; query?: Q; body?: B };
   response: { status: 200 | 201 | 204; description: string; schema?: R };
   /** Error statuses worth documenting besides the defaults (400, 401 on authed routes, 429, 500). */
